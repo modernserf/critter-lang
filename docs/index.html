@@ -112,16 +112,16 @@ pre {
 </header>
 <section>
   <pre>
-import :dom
+<strong>import</strong> :dom
 
-let hello(name: name) := {
+<strong>let</strong> hello(name: name) := {
     [:section [class: :main] [
         [:h1 ["Hello, " name "!"]]
     ]]
 }
 
-do dom:ready({
-    do dom:render(
+<strong>do</strong> dom:ready({
+    <strong>do</strong> dom:render(
         dom:find(:body)
         [hello [name: "World"]]
     )
