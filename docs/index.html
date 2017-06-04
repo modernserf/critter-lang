@@ -4,7 +4,7 @@
 <head>
 <meta charset="utf-8">
 <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
-<title>Justin Falcone, Programmer</title>
+<title>Critter: a fun, functional-ish programming language</title>
 <meta name="description" content="Justin Falcone is a programmer living in New York.">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <style type="text/css">
@@ -67,7 +67,7 @@ a {
 }
 
 html {
-  background-color: #fefcf6;
+  background-color: #f5f7ff;
   color: #322;
   padding: 12px 0;
   font-size: 18px;
@@ -96,9 +96,28 @@ p {
 }
 strong {
    font-weight: bold;
-   }
+}
+/* code example styles */
 pre {
-   font-family: monospace;   
+   font-family: monospace;
+   color: #aaa;
+   background-color: #333;
+   padding: 1em;
+}
+.keyword {
+    font-weight: bold;
+}
+.literal {
+    color: #fc0;
+}
+.parameter {
+    color: #f80;
+}
+.comment {
+    color: #0c0;
+}
+.identifier {
+    color: white;
 }
 </style>
 </head>
@@ -107,23 +126,27 @@ pre {
   <h1>Critter</h1>
   <p>
     <strong>Critter is a functional-ish language that compiles to JavaScript.</strong>
-    Critter includes persistent data structures, pattern matching, and a syntax that combines the simplicity of Lisp with the readability of scripting languages. 
+    Critter includes persistent data structures, pattern matching, and a syntax that combines the simplicity of Lisp with the readability of scripting languages.
+  </p>
+  <p>
+      Or, rather, it will someday. Critter is currently unimplemented.
   </p>
 </header>
 <section>
   <pre>
-<strong>import</strong> :dom
+<span class="comment">...critter in the browser...</span>
+<span class="keyword">import</span> <span class="literal">:dom</span>
 
-<strong>let</strong> hello(name: name) := {
-    [:section [class: :main] [
-        [:h1 ["Hello, " name "!"]]
+<span class="keyword">let</span> <span class="identifier">hello</span>(<span class="parameter">name:</span> <span class="identifier">name</span>) := {
+    [<span class="literal">:section</span> [<span class="parameter">class:</span> <span class="literal">:main</span>] [
+        [<span class="literal">:h1</span> [<span class="literal">"Hello, "</span> <span class="identifier">name</span> <span class="literal">"!"</span>]]
     ]]
 }
 
-<strong>do</strong> dom:ready({
-    <strong>do</strong> dom:render(
-        dom:find(:body)
-        [hello [name: "World"]]
+<span class="keyword">do</span> <span class="identifier">dom</span>:<span class="identifier">ready</span>({
+    <span class="keyword">do</span> <span class="identifier">dom</span>:<span class="identifier">render</span>(
+        <span class="identifier">dom</span>:<span class="identifier">find</span>(<span class="literal">:body</span>)
+        [<span class="identifier">hello</span> [<span class="parameter">name:</span> <span class="literal">"World"</span>]]
     )
 })
   </pre>
