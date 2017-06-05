@@ -134,27 +134,35 @@ code {
     white-space: nowrap;
 }
 /* code example styles */
-pre {
+pre,
+[data-critter-lang] {
    font-family: monospace;
    color: #aaa;
    background-color: #333;
    padding: 1em;
    line-height: 24px;
    margin-bottom: 12px;
+   white-space: pre-wrap;
 }
 .keyword {
     font-weight: bold;
 }
-.literal {
+.literal,
+.syntax-atom,
+.syntax-string,
+.syntax-number {
     color: #fc0;
 }
-.parameter {
+.parameter,
+.syntax-field_name {
     color: #f80;
 }
-.comment {
+.comment,
+.syntax-comment {
     color: #0c0;
 }
-.identifier {
+.identifier,
+.syntax-identifier {
     color: white;
 }
 </style>
@@ -170,22 +178,22 @@ pre {
       Or, rather, it will someday. Critter is currently unimplemented.
   </p>
 
-<pre>
-<span class="comment">...critter in the browser...</span>
-<span class="keyword">import</span> <span class="literal">:dom</span>
+<div data-critter-lang>
+import :dom
 
-<span class="keyword">let</span> <span class="identifier">hello</span>(<span class="parameter">name:</span> <span class="identifier">name</span>) := {
-  [<span class="literal">:section</span> [<span class="parameter">class:</span> <span class="literal">:main</span>] [
-      [<span class="literal">:h1</span> [<span class="literal">"Hello, "</span> <span class="identifier">name</span> <span class="literal">"!"</span>]]
+let hello(name: name) := {
+  [:section [class: :main] [
+      [:h1 ["Hello, " name "!"]]
   ]]
 }
 
-<span class="keyword">do</span> <span class="identifier">dom</span>:<span class="identifier">ready</span>({
-  <span class="keyword">do</span> <span class="identifier">dom</span>:<span class="identifier">render</span>(
-      <span class="identifier">dom</span>:<span class="identifier">find</span>(<span class="literal">:body</span>)
-      [<span class="identifier">hello</span> [<span class="parameter">name:</span> <span class="literal">"World"</span>]]
+do dom:ready({
+  do dom:render(
+      dom:find(:body)
+      [hello [name: "World"]]
   )
-})</pre>
+})
+</div>
 </header>
 
 <section class="main-contents">
@@ -259,53 +267,48 @@ this is a multi-line comment.
     <p>
         Numbers are native JavaScript numbers. There are no literals for other bases (binary, octal) or scientific notation.
     </p>
-<pre>
-<span class="comment">...integers...</span>
-<span class="literal">123</span>
-<span class="comment">...negative...</span>
-<span class="literal">-456</span>
-<span class="comment">...decimal...</span>
-<span class="literal">7.89</span>
-<span class="comment">...hexadecimal...</span>
-<span class="literal">0x0F</span></pre>
+<div data-critter-lang>
+123     ; integers
+-456    ; negative
+7.89    ; decimal
+0x0F    ; hexadecimal
+</div>
 
     <h3 id="basic-types--atoms">Atoms</h3>
     <p>
         Atoms are textual identifiers used for named function arguments, named record fields, and tags. They're similar to symbols in Ruby or keywords in Clojure, and are used in many places where strings are used in JavaScript. They can contain any characters except whitespace and the reserved characters <code>: . " ( ) [ ] { }</code>. Characters with multiple representations, such as <code>é</code>, are canonicalized into a standard form.
     </p>
-<pre>
-<span class="comment">...atoms...</span>
-<span class="literal">:foo</span>
-<span class="comment">...many non-letter characters are usable for atoms...</span>
-<span class="literal">:1</span>
-<span class="literal">:foo/bar</span>
-<span class="literal">:*=!&gt;</span>
-<span class="literal">:🐹</span>
-</pre>
+<div data-critter-lang>
+:foo :1 :foo/bar :*=!> :🐹
+</div>
 
     <h3 id="basic-types--let">Let Bindings</h3>
     <p>
         Define bindings with the <code>let</code> keyword. Bindings have the same restriction as atoms; additionally, bindings must not start with a digit or <code>-</code> followed by a digit.
     </p>
-    <pre>
-<span class="keyword">let</span> <span class="identifier">x</span> := <span class="literal">123.45</span>
-<span class="keyword">let</span> <span class="identifier">y</span> := <span class="literal">:foo</span></pre>
+<div data-critter-lang>
+    let x := 123.45
+    let y := :foo
+
+</div>
 
     <h3 id="basic-types--functions">Functions</h3>
 
     <p>
         Functions are defined with curly braces.
     </p>
-<pre>
-let fn := {(x) +(x 2)}</pre>
+<div data-critter-lang>
+let fn := {(x) +(x 2)}
+</div>
 
     <p>
         Critter employs a form of <a href="https://en.wikipedia.org/wiki/Uniform_Function_Call_Syntax">uniform function call syntax</a>:
     </p>
-    <pre>
-<span class="identifier">bar</span>(<span class="identifier">foo</span>(<span class="identifier">a</span> <span class="identifier">b</span>) <span class="identifier">c</span> <span class="identifier">d</span>)
-<span class="comment">...is the same as...</span>
-<span class="identifier">a</span>.<span class="identifier">foo</span>(<span class="identifier">b</span>).<span class="identifier">bar</span>(<span class="identifier">c</span> <span class="identifier">d</span>)</pre>
+<div data-critter-lang>
+bar(foo(a b) c d)
+; is the same as
+a.foo(b).bar(c d)
+</div>
 
     <p>
         This also means that <strong>Critter does not have operators:</strong> mathematical operators are just regular functions, without operator precedence, character restrictions, or special syntax. They can be used prefix <code>+(1 2)</code> or infix <code>1.+(2)</code>.
@@ -318,12 +321,13 @@ let fn := {(x) +(x 2)}</pre>
     <p>
         There is a shorthand syntax for pattern-matching functions by their arguments.
     </p>
-<pre>
+<div data-critter-lang>
 let foo(x) := { +(x 2) }
 let foo(x y) := { +(x y) }
 
-foo(5) ...evaluates to 7...
-foo(5 1) ...evaluates to 6...</pre>
+foo(5)   ; evaluates to 7
+foo(5 1) ; evaluates to 6
+</div>
 
     <h3 id="basic-types--records">Records</h3>
     <p>
@@ -331,10 +335,11 @@ foo(5 1) ...evaluates to 6...</pre>
     </p>
 
     <p>Records can be applied across function arguments.</p>
-<pre>
+<div data-critter-lang>
 apply([1 2 foo: 3] fn)
-...is the same as...
-fn(1 2 foo: 3)</pre>
+; is the same as
+fn(1 2 foo: 3)
+</div>
 
 
     <h3 id="basic-types--tables">Tables</h3>
@@ -354,15 +359,16 @@ fn(1 2 foo: 3)</pre>
 <p>
     Instead of boolean true/false, Critter uses <code>[:ok value]</code> / <code>:nil</code> for logic. This means all logical functions can follow circuit-breaker patterns:
 </p>
-<pre>
-3.<(4).<(5) ...[:ok 5]...
+<div data-critter-lang>
+3.<(4).<(5) ; [:ok 5]
 
-3.<(2).<(5) ...:nil...
+3.<(2).<(5) ; :nil
 
-[:ok a].and([:ok b]) ... [:ok b] ...
-[:ok a].or([:ok b]) ... [:ok a] ...
-[:ok 3].then({(a) +(a 1) }) ... [:ok 4] ...
-:nil.then({(a) +(a 1) }).else({(_) 5 }) ... [:ok 5] ...</pre>
+[:ok a].and([:ok b]) ; [:ok b]
+[:ok a].or([:ok b]) ; [:ok a]
+[:ok 3].then({(a) +(a 1) }) ; [:ok 4]
+:nil.then({(a) +(a 1) }).else({(_) 5 }) ; [:ok 5]
+</div>
 </section>
 
 <section>
@@ -379,12 +385,12 @@ fn(1 2 foo: 3)</pre>
 <p>
     <code>assert</code> keyword returns the error if the test fails, continues function if test succeeds
 </p>
-<pre>
+<div data-critter-lang>
 let fn(a b) := {
     assert a.<(3)
     assert b.isa(:number)
     b.+(a)
-}</pre>
+}</div>
 
 
 </section>
@@ -407,4 +413,5 @@ let fn(a b) := {
 
 
 <script async src="//platform.twitter.com/widgets.js" charset="utf-8"></script>
+<script type="text/javascript" src="highlighter.js"></script>
 </html>

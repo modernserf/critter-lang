@@ -1,0 +1,35 @@
+{
+  "name": "critter-lang",
+  "version": "1.0.0",
+  "description": "🐹 Critter -- a fun functional-ish programming language",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "dependencies": {
+    "faucet": "^0.0.1",
+    "pegjs": "^0.10.0",
+    "tape": "^4.6.3"
+  },
+  "devDependencies": {
+    "browserify": "^14.4.0",
+    "faucet": "0.0.1",
+    "tape": "^4.6.3"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build-tokenizer": "pegjs src/tokenizer.pegjs",
+    "build-highlighter": "browserify src/highlighter.js -o docs/highlighter.js",
+    "build": "npm run build-tokenizer && npm run build-highlighter"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/modernserf/critter-lang.git"
+  },
+  "author": "",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/modernserf/critter-lang/issues"
+  },
+  "homepage": "https://github.com/modernserf/critter-lang#readme"
+}
