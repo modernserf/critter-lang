@@ -12,21 +12,40 @@ function getHighlightedHTML (text) {
             return '<br/>';
         case 'field_name':
         case 'string':
-        case 'atom':
         case 'comment':
         case 'number':
-        case 'identifier':
             return span(type, raw || value)
+        case 'atom':
+            // hack
+            if (raw === ':=') {
+                return raw
+            } else {
+                return span(type, raw)
+            }
+        case 'identifier':
+            // hack
+            if (['let','do', 'import', 'assert'].includes(value)) {
+                return span('keyword', value)
+            } else {
+                return span(type, value)
+            }
         default:
             return raw || value
         }
     }).join('');
 }
 
+function trimBlock(str) {
+    const indent = str.length - str.trimLeft().length;
+    if (indent === 0) { return str; }
+    const lines = str.split('\n').map((line) => line.substr(indent - 1));
+    return lines.join('\n').trim();
+}
+
 window.addEventListener('DOMContentLoaded', () => {
     const nodes = Array.from(document.querySelectorAll('[data-critter-lang]'))
     nodes.forEach((node) => {
-        const html = getHighlightedHTML(node.textContent.trim())
+        const html = getHighlightedHTML(trimBlock(node.textContent))
         node.innerHTML = html
     })
 })
