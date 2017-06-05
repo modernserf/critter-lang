@@ -67,11 +67,11 @@ a {
 }
 
 html {
-  background-color: #f5f7ff;
+  background-color: #fafbff;
   color: #322;
   padding: 12px 0;
-  font-size: 18px;
-  font-family: "Georgia", serif;
+  font-size: 16px;
+  font-family: "Helvetica Neue", sans-serif;
 }
 
 header, section {
@@ -83,19 +83,55 @@ header, section {
 h1 {
   font-size: 36px;
   padding-bottom: 12px;
+  font-weight: bold;
 }
 
 h2 {
   font-size: 24px;
   padding-bottom: 12px;
+  font-weight: bold;
+}
+
+h3 {
+    font-size: 18px;
+    font-weight: bold;
+    padding-bottom: 6px;
 }
 
 p {
-  line-height: 24px;
+  line-height: 28px;
   padding-bottom: 12px;
+}
+section ul {
+    margin-left: 1em;
+    list-style: disc;
+    line-height: 28px;
+    padding-bottom: 12px;
+}
+ol.contents {
+    list-style: decimal inside;
+    line-height: 1.5;
+    background-color: white;
+    border: 1px solid #ccc;
+    border-radius: 1em;
+    padding: 1em;
+    margin-bottom: 12px;
+}
+em {
+    font-style: italic;
 }
 strong {
    font-weight: bold;
+}
+code {
+    font-family: monospace;
+    font-size: 0.8em;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    padding: 3px 4px;
+    background-color: white;
+    word-break: keep-all;
+    white-space: nowrap;
 }
 /* code example styles */
 pre {
@@ -103,6 +139,8 @@ pre {
    color: #aaa;
    background-color: #333;
    padding: 1em;
+   line-height: 24px;
+   margin-bottom: 12px;
 }
 .keyword {
     font-weight: bold;
@@ -131,24 +169,242 @@ pre {
   <p>
       Or, rather, it will someday. Critter is currently unimplemented.
   </p>
-</header>
-<section>
-  <pre>
+
+<pre>
 <span class="comment">...critter in the browser...</span>
 <span class="keyword">import</span> <span class="literal">:dom</span>
 
 <span class="keyword">let</span> <span class="identifier">hello</span>(<span class="parameter">name:</span> <span class="identifier">name</span>) := {
-    [<span class="literal">:section</span> [<span class="parameter">class:</span> <span class="literal">:main</span>] [
-        [<span class="literal">:h1</span> [<span class="literal">"Hello, "</span> <span class="identifier">name</span> <span class="literal">"!"</span>]]
-    ]]
+  [<span class="literal">:section</span> [<span class="parameter">class:</span> <span class="literal">:main</span>] [
+      [<span class="literal">:h1</span> [<span class="literal">"Hello, "</span> <span class="identifier">name</span> <span class="literal">"!"</span>]]
+  ]]
 }
 
 <span class="keyword">do</span> <span class="identifier">dom</span>:<span class="identifier">ready</span>({
-    <span class="keyword">do</span> <span class="identifier">dom</span>:<span class="identifier">render</span>(
-        <span class="identifier">dom</span>:<span class="identifier">find</span>(<span class="literal">:body</span>)
-        [<span class="identifier">hello</span> [<span class="parameter">name:</span> <span class="literal">"World"</span>]]
-    )
-})
-  </pre>
+  <span class="keyword">do</span> <span class="identifier">dom</span>:<span class="identifier">render</span>(
+      <span class="identifier">dom</span>:<span class="identifier">find</span>(<span class="literal">:body</span>)
+      [<span class="identifier">hello</span> [<span class="parameter">name:</span> <span class="literal">"World"</span>]]
+  )
+})</pre>
+</header>
+
+<section class="main-contents">
+    <h2>Table of Contents</h2>
+    <ol class="contents">
+        <li><a href="#overview">What makes Critter different?</a></li>
+        <li><a href="#basic-types">Basic types &amp; syntax</a></li>
+        <li><a href="#pattern-matching">Pattern matching &amp; conditionals</a></li>
+        <li><a href="#error-handling">Error handling</a></li>
+        <li><a href="#tables">Tables &amp; relations</a></li>
+        <li><a href="#processes">Processes &amp; mutation</a></li>
+        <li><a href="#metaprogramming">Metaprogramming</a></li>
+        <li><a href="#interop">JavaScript interop</a></li>
+    </ol>
 </section>
+
+
+<section id="overview">
+    <h2>What makes Critter different?</h2>
+
+    <p>
+        <strong>Critter isn't object-oriented.</strong> Not in the traditional sense, anyways. Critter has neither classes nor inheritance. There is no notion of <code>this</code> or <code>self</code>; there is no such thing as a "method", only "functions". However, Critter <em>does</em> have <strong>modules</strong> for organizing related functions, <strong>dot syntax</strong> to simulate method chaining, and <strong>processes</strong> for managing state changes and behavior.
+    </p>
+
+    <p>
+        <strong>Critter will also disappoint functional programming purists.</strong> Critter features dynamic typing and permits mutation and other side effects. However, Critter promotes a functional style of programming:
+    </p>
+    <ul>
+        <li>data structures are immutable by default</li>
+        <li>everything is an expression</li>
+        <li>functions called for side effects are made explicit</li>
+        <li>error &amp; null handling through variant types and pattern matching</li>
+    </ul>
+
+    <p>
+        <strong>Critter discourages string manipulation.</strong> Like Ruby, Clojure, and Elixir, Critter uses an <code>:atom</code> type in many places where one would use strings in JavaScript. Atoms are much more restricted than strings: they cannot be created at runtime or generated by user input, cannot contain special characters or whitespace, and cannot be split, concatenated or otherwise parsed. But this makes them safer to work with and limits the amount of parsing your program needs to do:
+
+        <blockquote class="twitter-tweet" data-lang="en"><p lang="en" dir="ltr">PSA: If a function accepts a string then it&#39;s a parser. Parsers are hard to get right and dangerous to get wrong. Write fewer of them.</p>&mdash; David R. MacIver (@DRMacIver) <a href="https://twitter.com/DRMacIver/status/862642573852258304">May 11, 2017</a></blockquote>
+    </p>
+
+    <p>
+        <strong>Critter supports relational programming.</strong> Tables are a core data type in Critter and are used where arrays, maps and sets would be in other languages. In addition to the expected map/filter/reduce functions, tables also support complex queries, set operations (union, intersection), and joins. Furthermore, because tables are lazily evaluated, they can be defined in terms of rules and used for Prolog-esque logic programming.
+    </p>
+</section>
+
+<section id="basic-types">
+    <h2>Basic types &amp; syntax</h2>
+
+    <ol class="contents">
+        <li><a href="#basic-types--comments">Comments</a></li>
+        <li><a href="#basic-types--numbers">Numbers</a></li>
+        <li><a href="#basic-types--atoms">Atoms</a></li>
+        <li><a href="#basic-types--let">Let Bindings</a></li>
+        <li><a href="#basic-types--functions">Functions</a></li>
+        <li><a href="#basic-types--records">Records</a></li>
+        <li><a href="#basic-types--tables">Tables</a></li>
+        <li><a href="#basic-types--buffers">Buffers &amp; Strings</a></li>
+        <li><a href="#basic-types--modules">Modules</a></li>
+    </ol>
+
+    <h3 id="basic-types--comments">Comments</h3>
+    <p>Comments begin and end with three periods. TODO this syntax is bad, maybe use <code>:{ }:</code> or something like that</p>
+    <pre>
+<span class="comment">...this is a single line comment...</span>
+
+<span class="comment">...
+this is a multi-line comment.
+...</span></pre>
+
+    <h3 id="basic-types--numbers">Numbers</h3>
+    <p>
+        Numbers are native JavaScript numbers. There are no literals for other bases (binary, octal) or scientific notation.
+    </p>
+<pre>
+<span class="comment">...integers...</span>
+<span class="literal">123</span>
+<span class="comment">...negative...</span>
+<span class="literal">-456</span>
+<span class="comment">...decimal...</span>
+<span class="literal">7.89</span>
+<span class="comment">...hexadecimal...</span>
+<span class="literal">0x0F</span></pre>
+
+    <h3 id="basic-types--atoms">Atoms</h3>
+    <p>
+        Atoms are textual identifiers used for named function arguments, named record fields, and tags. They're similar to symbols in Ruby or keywords in Clojure, and are used in many places where strings are used in JavaScript. They can contain any characters except whitespace and the reserved characters <code>: . " ( ) [ ] { }</code>. Characters with multiple representations, such as <code>é</code>, are canonicalized into a standard form.
+    </p>
+<pre>
+<span class="comment">...atoms...</span>
+<span class="literal">:foo</span>
+<span class="comment">...many non-letter characters are usable for atoms...</span>
+<span class="literal">:1</span>
+<span class="literal">:foo/bar</span>
+<span class="literal">:*=!&gt;</span>
+<span class="literal">:🐹</span>
+</pre>
+
+    <h3 id="basic-types--let">Let Bindings</h3>
+    <p>
+        Define bindings with the <code>let</code> keyword. Bindings have the same restriction as atoms; additionally, bindings must not start with a digit or <code>-</code> followed by a digit.
+    </p>
+    <pre>
+<span class="keyword">let</span> <span class="identifier">x</span> := <span class="literal">123.45</span>
+<span class="keyword">let</span> <span class="identifier">y</span> := <span class="literal">:foo</span></pre>
+
+    <h3 id="basic-types--functions">Functions</h3>
+
+    <p>
+        Functions are defined with curly braces.
+    </p>
+<pre>
+let fn := {(x) +(x 2)}</pre>
+
+    <p>
+        Critter employs a form of <a href="https://en.wikipedia.org/wiki/Uniform_Function_Call_Syntax">uniform function call syntax</a>:
+    </p>
+    <pre>
+<span class="identifier">bar</span>(<span class="identifier">foo</span>(<span class="identifier">a</span> <span class="identifier">b</span>) <span class="identifier">c</span> <span class="identifier">d</span>)
+<span class="comment">...is the same as...</span>
+<span class="identifier">a</span>.<span class="identifier">foo</span>(<span class="identifier">b</span>).<span class="identifier">bar</span>(<span class="identifier">c</span> <span class="identifier">d</span>)</pre>
+
+    <p>
+        This also means that <strong>Critter does not have operators:</strong> mathematical operators are just regular functions, without operator precedence, character restrictions, or special syntax. They can be used prefix <code>+(1 2)</code> or infix <code>1.+(2)</code>.
+    </p>
+
+    <p>
+        Functions can take named arguments. Named arguments must come after unnamed arguments. A function with all named arguments will fail when called infix.
+    </p>
+
+    <p>
+        There is a shorthand syntax for pattern-matching functions by their arguments.
+    </p>
+<pre>
+let foo(x) := { +(x 2) }
+let foo(x y) := { +(x y) }
+
+foo(5) ...evaluates to 7...
+foo(5 1) ...evaluates to 6...</pre>
+
+    <h3 id="basic-types--records">Records</h3>
+    <p>
+        Records are mixed-type data structures with optionally-named fields. Records can be used as tuples, tagged variants, or simple hashes.
+    </p>
+
+    <p>Records can be applied across function arguments.</p>
+<pre>
+apply([1 2 foo: 3] fn)
+...is the same as...
+fn(1 2 foo: 3)</pre>
+
+
+    <h3 id="basic-types--tables">Tables</h3>
+
+    <h3 id="basic-types--buffers">Buffers &amp; Strings</h3>
+
+    <h3 id="basic-types--modules">Modules</h3>
+
+</section>
+
+<section>
+<h2 id="pattern-matching">Pattern matching &amp; conditionals</h2>
+<p>
+    Pattern matching: destructuring records, <code>match(value patterns)</code>.
+</p>
+
+<p>
+    Instead of boolean true/false, Critter uses <code>[:ok value]</code> / <code>:nil</code> for logic. This means all logical functions can follow circuit-breaker patterns:
+</p>
+<pre>
+3.<(4).<(5) ...[:ok 5]...
+
+3.<(2).<(5) ...:nil...
+
+[:ok a].and([:ok b]) ... [:ok b] ...
+[:ok a].or([:ok b]) ... [:ok a] ...
+[:ok 3].then({(a) +(a 1) }) ... [:ok 4] ...
+:nil.then({(a) +(a 1) }).else({(_) 5 }) ... [:ok 5] ...</pre>
+</section>
+
+<section>
+<h2 id="error-handling">Error handling</h2>
+
+<p>
+    Syntax errors, invalid field access crash without recoverability. Crashes can be forced with the <code>exit</code> keyword.
+</p>
+
+<p>
+    APIs with recoverable failure use <code>[:ok value]</code> / <code>[:error value]</code> for error handling. Error variants are also "falsy" in conditionals.
+</p>
+
+<p>
+    <code>assert</code> keyword returns the error if the test fails, continues function if test succeeds
+</p>
+<pre>
+let fn(a b) := {
+    assert a.<(3)
+    assert b.isa(:number)
+    b.+(a)
+}</pre>
+
+
+</section>
+
+<section>
+<h2 id="tables">Tables &amp; relations</h2>
+</section>
+
+<section>
+<h2 id="processes">Processes &amp; mutation</h2>
+</section>
+
+<section>
+<h2 id="metaprogramming">Metaprogramming</h2>
+</section>
+
+<section>
+<h2 id="interop">JavaScript interop</h2>
+</section>
+
+
+<script async src="//platform.twitter.com/widgets.js" charset="utf-8"></script>
 </html>
