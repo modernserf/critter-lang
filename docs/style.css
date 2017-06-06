@@ -1,0 +1,152 @@
+/* http://meyerweb.com/eric/tools/css/reset/
+   v2.0 | 20110126
+   License: none (public domain)
+*/
+
+html, body, div, span, applet, object, iframe,
+h1, h2, h3, h4, h5, h6, p, blockquote, pre,
+a, abbr, acronym, address, big, cite, code,
+del, dfn, em, img, ins, kbd, q, s, samp,
+small, strike, strong, sub, sup, tt, var,
+b, u, i, center,
+dl, dt, dd, ol, ul, li,
+fieldset, form, label, legend,
+table, caption, tbody, tfoot, thead, tr, th, td,
+article, aside, canvas, details, embed,
+figure, figcaption, footer, header, hgroup,
+menu, nav, output, ruby, section, summary,
+time, mark, audio, video {
+    margin: 0;
+    padding: 0;
+    border: 0;
+    font-size: 100%;
+    font: inherit;
+    vertical-align: baseline;
+}
+/* HTML5 display-role reset for older browsers */
+article, aside, details, figcaption, figure,
+footer, header, hgroup, menu, nav, section {
+    display: block;
+}
+body {
+    line-height: 1;
+}
+ol, ul {
+    list-style: none;
+}
+blockquote, q {
+    quotes: none;
+}
+blockquote:before, blockquote:after,
+q:before, q:after {
+    content: '';
+    content: none;
+}
+table {
+    border-collapse: collapse;
+    border-spacing: 0;
+}
+/* styles */
+* {
+  box-sizing: border-box;
+  position: relative;
+}
+
+a {
+  text-decoration: none;
+}
+
+html {
+  background-color: #fafbff;
+  color: #322;
+  padding: 12px 0;
+  font-size: 16px;
+  font-family: "Helvetica Neue", sans-serif;
+}
+
+header, section {
+  padding: 12px;
+  max-width: 960px;
+  margin: 0 auto;
+}
+
+h1 {
+  font-size: 36px;
+  padding-bottom: 12px;
+  font-weight: bold;
+}
+
+h2 {
+  font-size: 24px;
+  padding-bottom: 12px;
+  font-weight: bold;
+}
+
+h3 {
+    font-size: 18px;
+    font-weight: bold;
+    padding-bottom: 6px;
+}
+
+p {
+  line-height: 28px;
+  padding-bottom: 12px;
+}
+section ul {
+    margin-left: 1em;
+    list-style: disc;
+    line-height: 28px;
+    padding-bottom: 12px;
+}
+ol.contents {
+    list-style: decimal inside;
+    line-height: 1.5;
+    background-color: white;
+    border: 1px solid #ccc;
+    border-radius: 1em;
+    padding: 1em;
+    margin-bottom: 12px;
+}
+em {
+    font-style: italic;
+}
+strong {
+   font-weight: bold;
+}
+code {
+    font-family: monospace;
+    font-size: 0.8em;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    padding: 3px 4px;
+    background-color: white;
+    word-break: keep-all;
+    white-space: nowrap;
+}
+/* code example styles */
+[data-critter-lang] {
+   font-family: monospace;
+   color: #aaa;
+   background-color: #333;
+   padding: 1em;
+   line-height: 24px;
+   margin-bottom: 12px;
+   white-space: pre-wrap;
+}
+.syntax-keyword {
+    font-weight: bold;
+}
+.syntax-atom,
+.syntax-string,
+.syntax-number {
+    color: #fc0;
+}
+.syntax-field_name {
+    color: #f80;
+}
+.syntax-comment {
+    color: #0c0;
+}
+.syntax-identifier {
+    color: white;
+}

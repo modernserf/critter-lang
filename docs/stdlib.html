@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+<title>Critter stdlib cheatsheet</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<section>
+    <h1>Basics</h1>
+    <p>These library functions are imported by default.</p>
+
+    <h2>Arithmetic</h2>
+
+    <div data-critter-lang>
+        +(Number Number) := Number      ; add
+        -(Number) := Number             ; negate
+        -(Number Number) := Number      ; subtract
+        *(Number Number) := Number      ; multiply
+        /(Number)        := Number      ; reciprocal
+        /(Number Number) := Number      ; divide
+        div(Number Number) := Number    ; integer division
+        mod(Number Number) := Number    ; modulo
+        ++(Number) := Number            ; increment
+        --(Number) := Number            ; decrement
+        abs(Number) := Number           ; absolute value
+        max(Number Number) := Number    ; maximum
+        min(Number Number) := Number    ; minimum
+        **(Number Number)               ; exponent
+
+        exp(Number Number) := Number    ; scientific notation
+        1.234.exp(11) ; => 123400000000
+    </div>
+
+    <h2>Conditionals</h2>
+
+    <div data-critter-lang>
+        value               ; truthy value
+        [:ok value]         ; truthy value
+        [:error value]      ; falsy value
+        :nil                ; falsy
+
+        ; comparison functions work with and unwrap [:ok value] records
+        ; x(T a T b) => x(a b) or x([:ok a] b) or x(a [:ok b]) or x([:ok a] [:ok b])
+
+        ; equality
+        =(T a T a) := [:ok a]
+        =(a a) := [:ok a]   ; matches :nil :nil or identical errors
+        =(_ _) := :nil
+
+        ; comparison
+        <(T Number a T Number b) := [:ok b] :- a < b
+        <(_ _) := :nil
+
+        and(truthy a truthy b) := [:ok b]
+        and(_ _) := nil
+
+        or(T a _) := [:ok a]
+        or(F _ T b) := [:ok b]
+        or(_ _) := :nil
+    </div>
+</section>
+
+<section>
+    <h1>Math</h1>
+
+    <div data-critter-lang>
+        import :math
+
+        ; real->integer
+        math:round(Number) := Number
+        math:floor(Number) := Number
+        math:floor(Number) := Number
+        math:ceil(Number)  := Number
+        math:trunc(Number) := Number
+
+        ; get closest value to number in min/max range
+        math:clamp(Number min: Number max: Number) := Number
+
+        ; collections of numbers
+        math:sum([Number]) := Number
+        math:product([Number]) := Number
+        math:mean([Number]) := Number
+        math:median([Number]) := Number
+        math:extent([Number]) := [min: Number max: Number]
+
+        ; logarithms
+        ; TODO: e log10 log2 log
+
+        ; trigonometry
+        ; TODO: pi sin cos tan etc...
+
+        ; convert unit to "standard angles" (radians)
+        math:degrees(Number) := Number
+        math:radians(Number) := Number
+        math:turns(Number) := Number
+
+        ; convert to other angle types
+        math:->degrees(Number) := Number
+        math:->radians(Number) := Number
+        math:->turns(Number) := Number
+
+        ; usage
+        90.degrees.->turns ; 0.25
+
+        ; coordinates
+        math:polar->cartesian([r: Number t: Number]) := [x: Number y: Number]
+        math:cartesian->polar([x: Number y: Number]) := [r: Number t: Number]
+
+        ; some matrix math stuff?
+    </div>
+</section>
+
+<section>
+    <h1>Bits</h1>
+
+    <div data-critter-lang>
+        import :bits
+        and or xor not << >> >>>
+
+        ; get bit value at index (where index 0 = least-significant bit)
+        bits:get(Number value Number index) := Number
+
+        bits:->number([Number]) := Number ; make a number from bits
+        ; usage
+        bits:->number([1 1 0 0 1 0 0 1]) ; => 201
+    </div>
+</section>
+
+<script type="text/javascript" src="highlighter.js"></script>
+
+</body>
+</html>
