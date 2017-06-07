@@ -7,11 +7,13 @@ Token
 / s:RecordIn    { return ["record_in", s] }
 / s:RecordOut   { return ["record_out", s] }
 / f:FieldName   { return ["field_name", f, f + ": "] }
+/ f:FieldAccess { return ["field_access", f]}
 / s:String      { return ["string", s, '"' + s + '"'] }
 / n:Number      { return ["number", Number(n), n] }
-/ a:Atom        { return ["atom", a, ":" + a] }
+/ a:Hashtag     { return ["hashtag", a, "#" + a] }
 / i:Identifier  { return ["identifier", i] }
 / Dot           { return ["dot", '.'] }
+/ Assignment    { return ["assignment", ' := ']}
 / s:ScopeIn     { return ["scope_in", s] }
 / s:ScopeOut    { return ["scope_out", s] }
 / ParamIn       { return ["param_in", '(' ] }
@@ -26,6 +28,8 @@ LineComment
 // functions
 Dot
 = '.'
+Assignment
+= ' := '
 ScopeIn
 = '{'
 ScopeOut
@@ -45,16 +49,19 @@ RecordOut
 FieldName
 = i:Identifier ': ' { return i }
 
-// identifiers & atoms
-Atom
-= ":" n:Number { return n }
-/ ":" i:Identifier { return i }
+FieldAccess
+= ':'
+
+// identifiers & hashtags
+Hashtag
+= "#" n:Number { return n }
+/ "#" i:Identifier { return i }
 
 Identifier
 = h:IdentifierFirstChar t:IdentifierChar* { return h + t.join('') }
 
 IdentifierFirstChar
-= [^ \t\n\r:\.\(\)\[\]\{\}0-9]
+= [^ \t\n\r:\.\(\)\[\]\{\}0-9#]
 
 IdentifierChar
 = [^ \t\n\r:\.\(\)\[\]\{\}]

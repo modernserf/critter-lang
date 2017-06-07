@@ -136,7 +136,7 @@ code {
 .syntax-keyword {
     font-weight: bold;
 }
-.syntax-atom,
+.syntax-hashtag,
 .syntax-string,
 .syntax-number {
     color: #fc0;

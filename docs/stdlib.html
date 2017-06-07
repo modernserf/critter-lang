@@ -39,27 +39,27 @@
 
     <div data-critter-lang>
         value               ; truthy value
-        [:ok value]         ; truthy value
-        [:error value]      ; falsy value
+        [#ok value]         ; truthy value
+        [#error value]      ; falsy value
         :nil                ; falsy
 
-        ; comparison functions work with and unwrap [:ok value] records
-        ; x(T a T b) => x(a b) or x([:ok a] b) or x(a [:ok b]) or x([:ok a] [:ok b])
+        ; comparison functions work with and unwrap [#ok value] records
+        ; x(T a T b) => x(a b) or x([#ok a] b) or x(a [#ok b]) or x([#ok a] [#ok b])
 
         ; equality
-        =(T a T a) := [:ok a]
-        =(a a) := [:ok a]   ; matches :nil :nil or identical errors
+        =(T a T a) := [#ok a]
+        =(a a) := [#ok a]   ; matches :nil :nil or identical errors
         =(_ _) := :nil
 
         ; comparison
-        <(T Number a T Number b) := [:ok b] :- a < b
+        <(T Number a T Number b) := [#ok b] :- a < b
         <(_ _) := :nil
 
-        and(truthy a truthy b) := [:ok b]
+        and(truthy a truthy b) := [#ok b]
         and(_ _) := nil
 
-        or(T a _) := [:ok a]
-        or(F _ T b) := [:ok b]
+        or(T a _) := [#ok a]
+        or(F _ T b) := [#ok b]
         or(_ _) := :nil
     </div>
 </section>

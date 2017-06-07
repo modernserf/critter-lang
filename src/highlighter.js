@@ -14,14 +14,8 @@ function getHighlightedHTML (text) {
         case 'string':
         case 'comment':
         case 'number':
-            return span(type, raw || value)
-        case 'atom':
-            // hack
-            if (raw === ':=') {
-                return raw
-            } else {
-                return span(type, raw)
-            }
+        case 'hashtag':
+            return span(type, raw)
         case 'identifier':
             // hack
             if (['let','do', 'import', 'assert'].includes(value)) {
