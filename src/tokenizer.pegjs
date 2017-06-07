@@ -1,3 +1,48 @@
+ExpressionList
+= h:Expression SP t:ExpressionList { return [h, ...t] }
+/ h:Expression { return  [h] }
+
+Expression
+= r:Record      { return ["record"].concat(r) }
+/ f:Function    { return f }
+/ s:String      { return ["string", s] }
+/ n:Number      { return ["number", Number(n)] }
+/ a:Hashtag     { return ["hashtag", a] }
+/ i:Identifier  { return ["identifier", i] }
+
+
+// functions
+Function
+= ScopeIn p:Params SP e:ExpressionList _ ScopeOut { return ['function', p].concat(e) }
+/ ScopeIn _ e:ExpressionList _ ScopeOut { return ['function', null].concat(e) }
+
+Params
+= ParamIn _ p:RecordBody _ ParamOut { return p }
+
+// records
+Record
+= RecordIn _ r:RecordBody _ RecordOut { return r }
+
+RecordBody
+= h:Field SP t:RecordBody { return [h, ...t] }
+/ h:Field { return [h] }
+
+Field
+= n:FieldName _ e:Expression { return ['field', n, e] }
+/ e:Expression { return ['field', null, e] }
+
+// non-evaluating
+_
+= OptSP LineComment OptSP
+/ OptSP
+
+SP
+= [ \t\n\r]+ _
+
+OptSP
+= [ \t\n\r]*
+
+// tokenizer (for syntax highlighting)
 TokenList
 = h:Token t:TokenList { return [h].concat(t) }
 / h:Token { return [h] }
@@ -18,7 +63,7 @@ Token
 / s:ScopeOut    { return ["scope_out", s] }
 / ParamIn       { return ["param_in", '(' ] }
 / ParamOut      { return ["param_out", ')'] }
-/ s:SP          { return ["sp", s] }
+/ s:Space       { return ["sp", s] }
 / s:NL          { return ["newline", s] }
 
 // comments
@@ -99,7 +144,7 @@ Char
 = [^"]
 
 // Whitespace
-SP "whitespace"
+Space
 = s:[ \t]+ { return s.join('') }
 
 NL "newline"
