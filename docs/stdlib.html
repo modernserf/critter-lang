@@ -16,23 +16,21 @@
     <h2>Arithmetic</h2>
 
     <div data-critter-lang>
-        +(Number Number) := Number      ; add
-        -(Number) := Number             ; negate
-        -(Number Number) := Number      ; subtract
-        *(Number Number) := Number      ; multiply
-        /(Number)        := Number      ; reciprocal
-        /(Number Number) := Number      ; divide
-        div(Number Number) := Number    ; integer division
-        mod(Number Number) := Number    ; modulo
-        ++(Number) := Number            ; increment
-        --(Number) := Number            ; decrement
-        abs(Number) := Number           ; absolute value
-        max(Number Number) := Number    ; maximum
-        min(Number Number) := Number    ; minimum
-        **(Number Number)               ; exponent
-
-        exp(Number Number) := Number    ; scientific notation
-        1.234.exp(11) ; => 123400000000
+        +(1 2) := 3     ; add
+        -(5) := -5      ; negate
+        -(5 3) := 2     ; subtract
+        *(2 3) := 6     ; multiply
+        /(10) := 0.1    ; reciprocal
+        /(6 2) := 3     ; divide
+        div(5 2) := 2   ; integer division
+        mod(5 2) := 1   ; modulo
+        ++(2) := 3      ; increment
+        --(2) := 1      ; decrement
+        abs(-5) := 5    ; absolute value
+        max(2 3) := 3   ; maximum
+        min(2 3) := 2   ; minimum
+        **(2 3) := 8    ; exponent
+        exp(1.234 11) := 123400000000   ; scientific notation
     </div>
 
     <h2>Conditionals</h2>
@@ -41,34 +39,132 @@
         value               ; truthy value
         [#ok value]         ; truthy value
         [#error value]      ; falsy value
-        :nil                ; falsy
+        #nil                ; falsy
 
         ; comparison functions work with and unwrap [#ok value] records
         ; x(T a T b) => x(a b) or x([#ok a] b) or x(a [#ok b]) or x([#ok a] [#ok b])
 
         ; equality
-        =(T a T a) := [#ok a]
-        =(a a) := [#ok a]   ; matches :nil :nil or identical errors
-        =(_ _) := :nil
+        =(a a) := [#ok a]   ; Note: matches equal falsy values, e.g. (#nil #nil) or identical errors
+        =(_ _) := #nil
 
-        ; comparison
-        <(T Number a T Number b) := [#ok b] :- a < b
-        <(_ _) := :nil
+        ; comparison returns #nil or [#ok {second arg}]
+        <(5 6) := [#ok 6]
+        <([#ok 5] [#ok 6]) := [#ok 6]
+        >(5 6) := #nil
+        >(#nil 6) := #nil
 
-        and(truthy a truthy b) := [#ok b]
-        and(_ _) := nil
+        and(a-truthy b-truthy) := [#ok b-truthy]
+        and(_ _) := #nil
 
-        or(T a _) := [#ok a]
-        or(F _ T b) := [#ok b]
-        or(_ _) := :nil
+        or(a-truthy _) := [#ok a-truthy]
+        or(a-falsy b-truthy) := [#ok b-truthy]
+        or(_ _) := #nil
     </div>
+
+    <h2>Records</h2>
+
+    <div data-critter-lang>
+        @let foo := [#a #b #c key: #value]
+        ; static field access
+        foo:0 := #a         ; access by index
+        foo:key := #value   ; access by keyword
+
+        ; dynamic field access
+        get(foo 1) := [#ok #b]
+        get(foo #key) := [#ok #value]
+        get(foo #nope) := #nil
+
+        ; destructuring
+        @let [a b c] := foo             ; a = #a, b = #b, c = #c
+        @let [a b c key: d] := foo      ; as above and d = #value
+        @let [a b c ::key] := foo       ; shorthand for `key: key`
+
+
+        ; updaters (returns a new record, does not mutate)
+        set(foo 2 #different) := [#a #b #different key: #value]
+        set(foo #key #different) := [#a #b #c key: #different]
+
+        ; adding new values
+        set(foo 3 #d) := [#a #b #c #d key: #different]
+        set(foo 4 #e) := [#a #b #c #nil #e key: #different]
+        set(foo #different-key #different) := [#a #b #c key: #different different-key: #different]
+
+        ; convert to table
+        list(foo) := table[
+            [key: 0 value: #a]
+            [key: 1 value: #b]
+            [key: 2 value: #c]
+            [key: #key value: #value]
+        ]
+    </div>
+
+    <h2>Functions</h2>
+
+    <div data-critter-lang>
+        @let foo := { 3 }                       ; function takes no args, returns 3
+        @let bar := {(x) +(x 1) }               ; function takes arg x, returns x + 1
+        @let baz := {(x y kw: z) x.+(y).-(z) }  ; keyword arguments
+        {(x y ::z) x.+(y).-(z)}                 ; keyword shortand, as in destructuring
+
+        foo()       ; call foo with no arguments
+        bar(value)  ; call bar with value
+        value.bar   ; call bar with value
+        value.bar() ; empty parens are OK but not necessary
+
+        baz(1 2 kw: 3)  ; call baz
+        1.baz(2 kw: 3)  ; call baz
+
+        ; constructor shorthand
+        @let quux := {(record) record:0}
+        quux([#a #b #c]) := #a
+        quux[#a #b #c] := #a
+
+        ; application
+        bar.apply([3]) := 4
+        @let b = apply(bar)
+        b[3] := 4
+        ; variadic functions
+        quux.unapply(#a #b #c) := #a
+        @let q := unapply(quux)
+        q(#a #b #c) := #a
+    </div>
+
+    <h2>Tables</h2>
+
+    <div data-critter-lang>
+        ; basic literal
+        @let foo := table[
+            [id: 1 name: "Alice"]
+            [id: 2 name: "Bob"]
+            [id: 3 name: "Carol"]
+        ]
+        ; with column labels
+        table(
+            [#id #name] [
+            [1 "Alice"]
+            [2 "Bob"]
+            [3 "Carol"]
+        ])
+        ; relational-ish operations
+        foo.select[#name]
+        foo.where({(r) r:id.=(2) })
+
+        ; set operations
+        ; set[] and or xor
+
+        ; combining tables into a database
+        ; datalog-ish stuff
+
+    </div>
+
 </section>
 
 <section>
     <h1>Math</h1>
 
     <div data-critter-lang>
-        import :math
+        @import #math
 
         ; real->integer
         math:round(Number) := Number
@@ -118,17 +214,19 @@
     <h1>Bits</h1>
 
     <div data-critter-lang>
-        import :bits
+        @import #bits
         and or xor not << >> >>>
 
         ; get bit value at index (where index 0 = least-significant bit)
-        bits:get(Number value Number index) := Number
+        bits:get(201 3) := 1
 
         bits:->number([Number]) := Number ; make a number from bits
         ; usage
         bits:->number([1 1 0 0 1 0 0 1]) ; => 201
     </div>
 </section>
+
+
 
 <script type="text/javascript" src="highlighter.js"></script>
 

@@ -15,14 +15,10 @@ function getHighlightedHTML (text) {
         case 'comment':
         case 'number':
         case 'hashtag':
+        case 'keyword':
             return span(type, raw)
         case 'identifier':
-            // hack
-            if (['let','do', 'import', 'assert'].includes(value)) {
-                return span('keyword', value)
-            } else {
-                return span(type, value)
-            }
+            return span(type, value)
         default:
             return raw || value
         }
