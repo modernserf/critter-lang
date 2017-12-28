@@ -56,7 +56,6 @@ Token
 / s:String      { return ["string", s, '"' + s + '"'] }
 / n:Number      { return ["number", Number(n), n] }
 / a:Hashtag     { return ["hashtag", a, "#" + a] }
-/ k:Keyword     { return ["keyword", k, '@' + k] }
 / i:Identifier  { return ["identifier", i] }
 / Dot           { return ["dot", '.'] }
 / Assignment    { return ["assignment", ' := ']}
@@ -98,9 +97,6 @@ FieldName
 FieldAccess
 = ':'
 
-Keyword
-= "@" i:Identifier { return i }
-
 // identifiers & hashtags
 Hashtag
 = "#" n:Number { return n }
@@ -110,7 +106,7 @@ Identifier
 = h:IdentifierFirstChar t:IdentifierChar* { return h + t.join('') }
 
 IdentifierFirstChar
-= [^ \t\n\r:\.\(\)\[\]\{\}0-9#@]
+= [^ \t\n\r:\.\(\)\[\]\{\}0-9#]
 
 IdentifierChar
 = [^ \t\n\r:\.\(\)\[\]\{\}]

@@ -39,27 +39,111 @@
         value               ; truthy value
         [#ok value]         ; truthy value
         [#error value]      ; falsy value
-        #nil                ; falsy
 
         ; comparison functions work with and unwrap [#ok value] records
         ; x(T a T b) => x(a b) or x([#ok a] b) or x(a [#ok b]) or x([#ok a] [#ok b])
 
         ; equality
-        =(a a) := [#ok a]   ; Note: matches equal falsy values, e.g. (#nil #nil) or identical errors
-        =(_ _) := #nil
+        =(T a T a) := [#ok a]
+        =(a a) := [#ok a]   ; also matches [#error a] [#error a] as [#ok [#error a]]
+        =(_ _) := [#error #no-match]
 
-        ; comparison returns #nil or [#ok {second arg}]
-        <(5 6) := [#ok 6]
-        <([#ok 5] [#ok 6]) := [#ok 6]
-        >(5 6) := #nil
-        >(#nil 6) := #nil
+        ; comparison
+        <(T Number a T Number b) := [#ok b] :- a < b
+        <(_ _) := [#error #no-match]
 
-        and(a-truthy b-truthy) := [#ok b-truthy]
-        and(_ _) := #nil
+        and(T a T b) := [#ok b]
+        and(_ _) := [#error #no-match]
 
-        or(a-truthy _) := [#ok a-truthy]
-        or(a-falsy b-truthy) := [#ok b-truthy]
-        or(_ _) := #nil
+        ; left-propagating "and"
+        also(T a T b) := [#ok a]
+        also(_ _) := [#error #no-match]
+
+        or(T a _) := [#ok a]
+        or([#error a] T b) := [#ok b]
+        or(_ _) := [#error #no-match]
+
+        ; if-then-else
+        <(a 3).then({ a + 1 }).else({ 10 })
+
+        ; continue, flatmap, monadic bind
+        then(T a {(a) T b}) := [#ok b]
+        then([#error b] _) := [#error b]
+
+        ; handle error
+        catch(T a _) := [#ok a]
+        catch([#error a] {(a) T b}) := [#ok b]
+
+        ; handle error &amp; unwrap
+        else(T a _) := a
+        else([#error a] {(a)  b}) := b
+
+        ; pattern matching
+        let cell := [x: 2 y: 3 state: #alive]
+        let next-state := [cell:state cell.neighbors].match([
+            {(#alive 2) #alive }
+            {(_      3) #alive }
+        ]).else({ #dead })
+    </div>
+
+    <h2>Records</h2>
+
+    <div data-critter-lang>
+        [1 2 3]         ; positional fields
+        [foo: 1 bar: 2] ; named fields
+        [1 2 foo: 3]    ; mix
+
+        ; does not compile: [foo: 1 2 3]
+        ; positional fields must come before named fields
+
+        ; destructuring
+        let [a b foo: c] := [1 2 foo: 3]
+
+        ; static field access
+        [foo: 1 bar: 2]:foo := 1
+
+        ; crashes
+        [foo: 1 bar: 2]:baz
+
+        ; dynamic field access
+        [foo: 1 bar: 2].get(#foo) := [:ok 1]
+        [foo: 1 bar: 2].get(#baz) := [:error :nil]
+
+
+    </div>
+
+    <h2>Tables &amp; Databases</h2>
+
+    <div data-critter-lang>
+        ; create table
+        let foo := table([
+            [a: 1 b: 2 c: 3]
+            [a: 1 b: 6 c: 5]
+            [a: 2 b: 3 c: 4]
+        ])
+
+        ; datalog-ish query
+        foo.query(
+            find: [$b $c]
+            where: [[$id [#a] 1]
+                    {<(?b ?c)}
+                    [$id [#b] $b]
+                    [$id [#c] $c]])
+
+        ; filters
+        foo.filter({(a: a) >(a 1) })
+
+        ; using call shorthand
+        foo.filter(..get(#a).>(1))
+        foo.filter(..where([a: 1]))
+
+
+        ; mapping
+        foo.map(..update(#a ++)) := table([
+
+        ])
+
+
     </div>
 
     <h2>Records</h2>
@@ -203,8 +287,8 @@
         90.degrees.->turns ; 0.25
 
         ; coordinates
-        math:polar->cartesian([r: Number t: Number]) := [x: Number y: Number]
-        math:cartesian->polar([x: Number y: Number]) := [r: Number t: Number]
+        math:->cartesian([r: Number t: Number]) := [x: Number y: Number]
+        math:->polar([x: Number y: Number]) := [r: Number t: Number]
 
         ; some matrix math stuff?
     </div>
