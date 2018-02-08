@@ -1,10 +1,10 @@
-const test = require("tape");
-const P = require("parsimmon");
+const test = require('tape')
+const P = require('parsimmon')
 
 const Lang = P.createLanguage({
     Program: (r) => P.alt(
-        r.Expression,
-    ).map(tagWith("Program")),
+        r.Expression
+    ).map(tagWith('Program')),
     Expression: (r) => P.alt(
         r.FieldGet,
         r.PlainExpression),
@@ -15,25 +15,25 @@ const Lang = P.createLanguage({
     FieldGet: (r) => P.seqMap(
         r.PlainExpression,
         P.optWhitespace
-        .then(r.FieldOp)
-        .then(P.alt(r.Number, r.Ident))
-        .atLeast(1),
+            .then(r.FieldOp)
+            .then(P.alt(r.Number, r.Ident))
+            .atLeast(1),
         tagWith('FieldGet')),
     FieldOp: () => P.string('::'),
     Record: (r) =>
         r.LBrk
-        .then(P.optWhitespace)
-        .then(r.Arg.sepBy(P.whitespace))
-        .skip(P.optWhitespace)
-        .skip(r.RBrk)
-        .map(tagWith('Record')),
+            .then(P.optWhitespace)
+            .then(r.Arg.sepBy(P.whitespace))
+            .skip(P.optWhitespace)
+            .skip(r.RBrk)
+            .map(tagWith('Record')),
     FnCall: (r) => P.seqMap(
-        r.Ident,
+        r.Ident, // TODO: this should be any expression, including another FnCall
         r.LParen
-        .then(P.optWhitespace)
-        .then(r.Arg.sepBy(P.whitespace))
-        .skip(P.optWhitespace)
-        .skip(r.RParen),
+            .then(P.optWhitespace)
+            .then(r.Arg.sepBy(P.whitespace))
+            .skip(P.optWhitespace)
+            .skip(r.RParen),
         tagWith('FnCall')),
     Arg: (r) => P.alt(
         P.seqMap(
@@ -47,22 +47,22 @@ const Lang = P.createLanguage({
     RParen: () => P.string(')'),
     Colon: () => P.string(':'),
     Token: (r) => P.alt(
-        r.HexNumber.map(tagWith("Number")),
-        r.Number.map(tagWith("Number")),
-        r.String.map(tagWith("String")),
-        r.Ident.map(tagWith("Ident"))),
+        r.HexNumber.map(tagWith('Number')),
+        r.Number.map(tagWith('Number')),
+        r.String.map(tagWith('String')),
+        r.Ident.map(tagWith('Ident'))),
     Number: () => P.regexp(/-?[0-9]+(.[0-9]+)?/).map(Number),
     HexNumber: () => P.regexp(/0x[0-9A-Fa-f]+/).map(Number),
     String: (r) =>
         r.Quote
-        .then(P.alt(
-            r.QuoteEscape,
-            P.regexp(/[^"]/))
-            .many().map((x) => x.join(""))
-        .skip(r.Quote)),
+            .then(P.alt(
+                r.QuoteEscape,
+                P.regexp(/[^"]/))
+                .many().map((x) => x.join(''))
+                .skip(r.Quote)),
     QuoteEscape: () => P.string('\\"').map(() => '"'),
     Quote: () => P.string('"'),
-    Ident: () => P.regexp(/[^\s\(\)\:\[\]]+/),
+    Ident: () => P.regexp(/[^\s():[\]]+/)
 })
 
 function parse (text) {
@@ -70,26 +70,26 @@ function parse (text) {
 }
 
 function tagWith (tag) {
-    return (...args) => [tag, ...args];
+    return (...args) => [tag, ...args]
 }
 
-test("parses a number", (t) => {
+test('parses a number', (t) => {
     t.deepEquals(
-        parse("123"),
+        parse('123'),
         ['Program', ['Number', 123]]
     )
     t.deepEquals(
-        parse("-123.45"),
+        parse('-123.45'),
         ['Program', ['Number', -123.45]]
     )
     t.deepEquals(
-        parse("0xCAFEBABE"),
+        parse('0xCAFEBABE'),
         ['Program', ['Number', 0xCAFEBABE]]
     )
     t.end()
 })
 
-test("parses a quoted string", (t) => {
+test('parses a quoted string', (t) => {
     t.deepEquals(
         parse('"foo bar baz"'),
         ['Program', ['String', 'foo bar baz']]
@@ -101,7 +101,7 @@ test("parses a quoted string", (t) => {
     t.end()
 })
 
-test("parses an identifier", (t) => {
+test('parses an identifier', (t) => {
     t.deepEquals(
         parse('foo'),
         ['Program', ['Ident', 'foo']]
@@ -118,7 +118,7 @@ test("parses an identifier", (t) => {
     t.end()
 })
 
-test("parses a fn call", (t) => {
+test('parses a fn call', (t) => {
     t.deepEquals(
         parse('foo()'),
         ['Program', ['FnCall', 'foo', []]]
@@ -129,7 +129,7 @@ test("parses a fn call", (t) => {
         ['Program', ['FnCall', 'foo', [
             ['Arg', ['Ident', 'bar']],
             ['Arg', ['String', 'baz']],
-            ['Arg', ['Number', 123.45]],
+            ['Arg', ['Number', 123.45]]
         ]]]
     )
 
@@ -139,13 +139,13 @@ test("parses a fn call", (t) => {
             ['Arg', ['Ident', 'bar']],
             ['Arg', ['String', 'baz']],
             ['NamedArg', 'quux', ['Number', 123.45]],
-            ['NamedArg', 'snerf', ['Ident', 'snerf']],
+            ['NamedArg', 'snerf', ['Ident', 'snerf']]
         ]]]
     )
     t.end()
 })
 
-test("parses a record", (t) => {
+test('parses a record', (t) => {
     t.deepEquals(
         parse('[]'),
         ['Program', ['Record', []]]
@@ -156,9 +156,9 @@ test("parses a record", (t) => {
         ['Program', ['Record', [
             ['Arg', ['Ident', 'bar']],
             ['Arg', ['Record', [
-                ['Arg', ['String', 'baz']],
+                ['Arg', ['String', 'baz']]
             ]]],
-            ['Arg', ['Number', 123.45]],
+            ['Arg', ['Number', 123.45]]
         ]]]
     )
 
@@ -168,17 +168,17 @@ test("parses a record", (t) => {
             ['Arg', ['Ident', 'bar']],
             ['Arg', ['String', 'baz']],
             ['NamedArg', 'quux', ['Number', 123.45]],
-            ['NamedArg', 'snerf', ['Ident', 'snerf']],
+            ['NamedArg', 'snerf', ['Ident', 'snerf']]
         ]]]
     )
     t.end()
 })
 
-test("field access", (t) => {
+test('field access', (t) => {
     t.deepEquals(
         parse('foo::bar::baz::0'),
         ['Program',
-            ['FieldGet', ["Ident", 'foo'], ['bar', 'baz', 0]]],
+            ['FieldGet', ['Ident', 'foo'], ['bar', 'baz', 0]]]
     )
     t.end()
 })

@@ -7,11 +7,18 @@
     "doc": "docs"
   },
   "dependencies": {
+    "escodegen": "^1.9.0",
     "parsimmon": "^1.6.2",
     "pegjs": "^0.10.0"
   },
   "devDependencies": {
     "browserify": "^14.4.0",
+    "eslint": "^4.17.0",
+    "eslint-config-standard": "^11.0.0-beta.0",
+    "eslint-plugin-import": "^2.8.0",
+    "eslint-plugin-node": "^6.0.0",
+    "eslint-plugin-promise": "^3.6.0",
+    "eslint-plugin-standard": "^3.0.1",
     "faucet": "0.0.1",
     "tape": "^4.6.3"
   },
