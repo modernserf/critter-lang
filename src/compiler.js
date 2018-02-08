@@ -25,10 +25,7 @@ function transform ([type, value, meta], index) {
             value: value
         }
     case 'Ident':
-        return {
-            type: 'Identifier',
-            name: mapIdent(value)
-        }
+        return ident(value)
     case 'Record':
         return {
             type: 'ObjectExpression',
@@ -75,16 +72,17 @@ function transform ([type, value, meta], index) {
     case 'FieldGet':
         return stdlibMethod('getFields', [
             transform(value),
-            {
-                type: 'ArrayExpression',
-                elements: meta.map((key) => ({
-                    type: 'Literal',
-                    value: key
-                }))
-            }
+            { type: 'Literal', value: meta }
         ])
+    case 'Program':
+        return {
+            type: 'Program',
+            body: value.length
+                ? [buildSequence(value)]
+                : []
+        }
     case 'Keyword':
-        throw new Error('Keyword must be compiled in function or module context')
+        throw new Error('Keyword must be compiled in function or program context')
     default:
         throw new Error(`Unknown AST node ${type}`)
     }
@@ -92,14 +90,14 @@ function transform ([type, value, meta], index) {
 
 // converts @keyword blocks into continuation-passing style
 function buildSequence ([head, ...tail]) {
-    const [type, ident, assignment, value] = head
+    const [type, keyword, assignment, value] = head
 
     if (type !== 'Keyword') {
         return transform(head)
     }
 
     const args = [
-        { type: 'Identifier', name: mapIdent(ident) },
+        ident(keyword),
         transform(value)
     ]
 
@@ -107,7 +105,7 @@ function buildSequence ([head, ...tail]) {
         args.push({
             type: 'FunctionExpression',
             params: assignment
-                ? [{ type: 'Identifier', name: mapIdent(assignment) }]
+                ? [ident(assignment)]
                 : [],
             body: {
                 type: 'BlockStatement',
@@ -135,10 +133,35 @@ function stdlibMethod (methodName, args) {
     }
 }
 
-function mapIdent (str) {
-    return str.split('')
+const reservedJSWords = new Set([
+    'null', 'undefined', 'true', 'false',
+    'break', 'case', 'catch', 'continue', 'debugger',
+    'default', 'delete', 'do', 'else', 'finally', 'for',
+    'function', 'if', 'in', 'instanceof', 'new', 'return',
+    'switch', 'this', 'throw', 'try', 'typeof', 'var',
+    'void', 'while', 'with',
+    'abstract', 'boolean', 'byte', 'char', 'class',
+    'const', 'double', 'enum', 'export', 'extends',
+    'final', 'float', 'goto', 'implements', 'import',
+    'int', 'interface', 'let', 'long', 'native',
+    'package', 'private', 'protected', 'public',
+    'short', 'static', 'super', 'synchronized',
+    'throws', 'transient', 'volatile', 'yield'
+])
+
+function ident (name) {
+    const escapedName = name.split('')
         .map((ch) => /[A-Za-z]/.test(ch) ? ch : `_${ch.charCodeAt(0)}`)
         .join('')
+
+    const withReserved = reservedJSWords.has(escapedName)
+        ? `_${escapedName}`
+        : escapedName
+
+    return {
+        type: 'Identifier',
+        name: withReserved
+    }
 }
 
 function compile (critterAST) {

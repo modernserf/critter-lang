@@ -21,8 +21,7 @@ test('identifier', (t) => {
     t.equals(compile(['Ident', 'foobar']), 'foobar')
     t.equals(compile(['Ident', '++=>']), '_43_43_61_62')
     t.equals(compile(['Ident', '_43']), '_95_52_51')
-
-    // TODO: replace reserved words
+    t.equals(compile(['Ident', 'var']), '_var')
 
     t.end()
 })
@@ -103,13 +102,8 @@ test('function expression with args', (t) => {
 })
 
 test('field access', (t) => {
-    const prog = ['FieldGet', ['Ident', 'foo'], ['bar', 'baz', 0]]
-    t.equals(compile(prog), [
-        `CRITTER.getFields(foo, [`,
-        `    'bar',`,
-        `    'baz',`,
-        `    0`,
-        `])`
+    t.equals(compile(['FieldGet', ['Ident', 'foo'], 'bar']), [
+        `CRITTER.getFields(foo, 'bar')`
     ].join('\n'))
     t.end()
 })
@@ -171,33 +165,3 @@ test('keyword assignments', (t) => {
     ].join('\n'))
     t.end()
 })
-
-/* block with continuations
-; critter
-(){
-    @def x := 1
-    @def y := foo(2)
-    x .+ y
-}
-
-// AST
-['FnExp', [], [
-    ['KeywordAssign', 'def', 'x', ['Number', 1]],
-    ['KeywordAssign', 'def', 'y',
-        ['FnCall', ['Ident', 'foo'], [['Arg', ['Number', 2] ]]]],
-    ['FnCall', ['Ident', '+'], [
-        ['Arg', ['Ident', 'x']],
-        ['Arg', ['Ident', 'y']],
-    ]]
-]]
-
-// JavaScript
-
-function () {
-    return CRITTER.continue(def, 1, (x) =>
-        CRITTER.continue(def, foo(2), (y) =>
-            _43(x, y)
-        ),
-    )
-}
-*/
