@@ -109,7 +109,7 @@ test('field access', (t) => {
 })
 
 test('bare keyword', (t) => {
-    const prog = ['Keyword', null, 'foo', ['Ident', 'bar']]
+    const prog = ['Keyword', 'foo', null, ['Ident', 'bar']]
     t.throws(() => {
         compile(prog)
     })

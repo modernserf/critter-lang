@@ -186,3 +186,12 @@ test('precedence', (t) => {
     )
     t.end()
 })
+
+test('keywords', (t) => {
+    t.deepEquals(
+        expr('@foo bar(baz)'),
+        ['Keyword', 'foo', null,
+            ['FnCall', ['Ident', 'bar'], [['Arg', ['Ident', 'baz']]]] ]
+    )
+    t.end()
+})

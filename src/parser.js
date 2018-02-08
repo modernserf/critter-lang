@@ -3,6 +3,7 @@ const P = require('parsimmon')
 const Lang = P.createLanguage({
     Program: (r) => r.Body.map(tagWith('Program')),
     Expression: (r) => P.alt(
+        r.Keyword,
         r.DotFnCall,
         r.FnCall,
         r.FieldGet,
@@ -31,10 +32,12 @@ const Lang = P.createLanguage({
             .then(r.Expression.sepBy(r.Line))
             .skip(P.optWhitespace),
 
-    FnExp: (r) => P.alt(
-        P.seqMap(r.FnArgs, r.FnExpBody, tagWith('FnExp')),
-        r.FnExpBody.map((body) => ['FnExp', [], body])
-    ),
+    // TODO: ([Arg: Ident | DestructureIdent]+){ Body }
+    FnExp: (r) =>
+        P.alt(
+            P.seq(r.FnArgs, r.FnExpBody),
+            r.FnExpBody.map((body) => [[], body])
+        ).map(spread(tagWith('FnExp'))),
     FnExpBody: (r) =>
         r.LCurly
             .then(r.Body)
@@ -74,6 +77,21 @@ const Lang = P.createLanguage({
             tagWith('NamedArg')),
         r.Expression.map(tagWith('Arg'))),
 
+    Keyword: (r) => P.alt(
+        r.KeywordAssignment,
+        r.KeywordStatement
+    ).map(spread(tagWith('Keyword'))),
+    KeywordAssignment: (r) => P.seq(
+        r.At.then(r.Ident).skip(P.whitespace),
+        r.Ident.skip(P.whitespace).skip(r.Assignment).skip(P.whitespace),
+        r.Expression
+    ),
+    KeywordStatement: (r) => P.seq(
+        r.At.then(r.Ident).skip(P.whitespace),
+        P.index.map(() => null),
+        r.Expression
+    ),
+
     // punctuation
     LBrk: () => P.string('['),
     RBrk: () => P.string(']'),
@@ -86,6 +104,8 @@ const Lang = P.createLanguage({
     FieldOp: () => P.string('::'),
     Dot: () => P.string('.'),
     Line: () => P.seq(P.optWhitespace, P.string('\n'), P.optWhitespace),
+    At: () => P.string('@'),
+    Assignment: () => P.string(':='),
 
     Terminal: (r) => P.alt(
         r.HexNumber.map(tagWith('Number')),
@@ -125,6 +145,10 @@ function tagWith (tag) {
 function tagSeqWith (tag) {
     return (root, args) =>
         args.reduce((acc, item) => [tag, acc, item], root)
+}
+
+function spread (f) {
+    return (xs) => f(...xs)
 }
 
 module.exports = { parse, expr }
