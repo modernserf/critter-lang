@@ -1,5 +1,10 @@
 const P = require('parsimmon')
 
+const tagWith = (tag) => (...args) => [tag, ...args]
+const tagSeq = (tagger) => (init, args) =>
+    args.reduce((acc, item) => tagger(acc, item), init)
+const spread = (f) => (xs) => f(...xs)
+
 const tags = {
     Program: tagWith('Program'),
     FieldGet: tagWith('FieldGet'),
@@ -143,29 +148,8 @@ const Lang = P.createLanguage({
     Ident: () => P.regexp(/[^\s():[\].{}#]+/)
 })
 
-function stripComments (str) {
-    return str.replace(/;.+\n/g, '')
-}
-
-function parse (text) {
-    return Lang.Program.tryParse(stripComments(text))
-}
-
-function expr (text) {
-    return Lang.Expression.tryParse(text)
-}
-
-function tagWith (tag) {
-    return (...args) => [tag, ...args]
-}
-
-function tagSeq (tagger) {
-    return (init, args) =>
-        args.reduce((acc, item) => tagger(acc, item), init)
-}
-
-function spread (f) {
-    return (xs) => f(...xs)
-}
+const stripComments = (str) => str.replace(/;.+\n/g, '')
+const parse = (text) => Lang.Program.tryParse(stripComments(text))
+const expr = (text) => Lang.Expression.tryParse(text)
 
 module.exports = { parse, expr, tags }

@@ -1,137 +1,97 @@
 const escodegen = require('escodegen')
+const { pipe, Either, tagConstructors } = require('./util')
 
-function transform ([type, value, meta], index) {
-    switch (type) {
-    case 'Number':
-        if (value >= 0) {
-            return {
-                type: 'Literal',
-                value: value
-            }
-        } else {
-            return {
-                type: 'UnaryExpression',
-                operator: '-',
-                prefix: true,
-                argument: {
-                    type: 'Literal',
-                    value: -value
-                }
-            }
-        }
-    case 'String':
-        return {
-            type: 'Literal',
-            value: value
-        }
-    case 'Ident':
-        return ident(value)
-    case 'Record':
-        return {
-            type: 'ObjectExpression',
-            properties: value.map(transform)
-        }
-    case 'FnCall':
-        return {
-            type: 'CallExpression',
-            callee: transform(value),
-            arguments: [{
-                type: 'ObjectExpression',
-                properties: meta.map(transform)
-            }]
-        }
-    case 'FnExp':
-        return {
-            type: 'FunctionExpression',
-            params: value.length ? [{
-                type: 'ObjectExpression',
-                properties: value.map(transform)
-            }] : [],
-            body: {
-                type: 'BlockStatement',
-                body: [{
-                    type: 'ReturnStatement',
-                    argument: buildSequence(meta)
-                }]
-            }
-        }
-    case 'Arg':
-        return {
-            type: 'Property',
-            key: { type: 'Literal', value: index },
-            value: transform(value),
-            kind: 'init'
-        }
-    case 'NamedArg':
-        return {
-            type: 'Property',
-            key: { type: 'Literal', value: value },
-            value: transform(meta),
-            kind: 'init'
-        }
-    case 'FieldGet':
-        return runtimeMethod('getFields', [
-            transform(value),
-            { type: 'Literal', value: meta }
-        ])
-    case 'Program':
-        return {
-            type: 'Program',
-            body: value.length
-                ? [buildSequence(value)]
-                : []
-        }
-    case 'Keyword':
+const JS = tagConstructors([
+    ['Program', 'body'],
+    ['Literal', 'value'],
+    ['Identifier', 'name'],
+    ['UnaryExpression', 'operator', 'argument', 'prefix'],
+    ['ObjectExpression', 'properties'],
+    ['CallExpression', 'callee', 'arguments'],
+    ['FunctionExpression', 'params', 'body'],
+    ['BlockStatement', 'body'],
+    ['ReturnStatement', 'argument'],
+    ['Property', 'kind', 'key', 'value'],
+    ['MemberExpression', 'object', 'property', 'computed']
+])
+
+const match = (obj, onDefault) => ([type, ...args], index) =>
+    obj[type] ? obj[type](args, index) : onDefault(type, args, index)
+
+const oneItem = (f, xs) => xs.length ? [f(xs)] : []
+
+const transform = match({
+    Program: ([value]) =>
+        JS.Program(oneItem(buildSequence, value)),
+    Number: ([value]) =>
+        value >= 0
+            ? JS.Literal(value)
+            : JS.UnaryExpression('-', JS.Literal(-value), true),
+    String: ([value]) =>
+        JS.Literal(value),
+    Ident: ([value]) =>
+        ident(value),
+    Record: ([args]) =>
+        JS.ObjectExpression(args.map(transform)),
+    FnCall: ([callee, args]) =>
+        JS.CallExpression(transform(callee), [
+            JS.ObjectExpression(args.map(transform))
+        ]),
+    FnExp: ([params, body]) =>
+        JS.FunctionExpression(
+            oneItem(
+                (xs) => JS.ObjectExpression(xs.map(transform)),
+                params),
+            JS.BlockStatement([
+                JS.ReturnStatement(buildSequence(body))
+            ])
+        ),
+    Arg: ([value], index) =>
+        JS.Property('init', JS.Literal(index), transform(value)),
+    NamedArg: ([key, value]) =>
+        JS.Property('init', JS.Literal(key), transform(value)),
+    FieldGet: ([target, key]) =>
+        runtimeMethod('getFields', [transform(target), JS.Literal(key)]),
+    Keyword: () => {
         throw new Error('Keyword must be compiled in function or program context')
-    default:
-        throw new Error(`Unknown AST node ${type}`)
     }
-}
+}, (type) => {
+    throw new Error(`Unknown AST node ${type}`)
+})
 
 // converts @keyword blocks into continuation-passing style
-function buildSequence ([head, ...tail]) {
-    const [type, keyword, assignment, value] = head
-
-    if (type !== 'Keyword') {
-        return transform(head)
-    }
-
-    const args = [
+const buildSequence = pipe([
+    ([head, ...tail]) => [head, tail],
+    Either.right,
+    Either.filterm(([[type]]) => type === 'Keyword'),
+    Either.mapLeft(([head]) => transform(head)),
+    Either.fmap(([[_type, keyword, assignment, value], tail]) => [
         ident(keyword),
-        transform(value)
-    ]
+        transform(value),
+        tail.length
+            ? JS.FunctionExpression(
+                assignment
+                    ? [ident(assignment)]
+                    : [],
+                JS.BlockStatement([
+                    JS.ReturnStatement(buildSequence(tail))
+                ])
+            ) : undefined
+    ]),
+    Either.fmap((args) => args.filter((x) => x)),
+    Either.fmap((args) => runtimeMethod('keyword', args)),
+    Either.unwrap
+])
 
-    if (tail.length) {
-        args.push({
-            type: 'FunctionExpression',
-            params: assignment
-                ? [ident(assignment)]
-                : [],
-            body: {
-                type: 'BlockStatement',
-                body: [{
-                    type: 'ReturnStatement',
-                    argument: buildSequence(tail)
-                }]
-            }
-        })
-    }
-
-    return runtimeMethod('keyword', args)
-}
-
-function runtimeMethod (methodName, args) {
-    return {
-        type: 'CallExpression',
-        callee: {
-            type: 'MemberExpression',
-            computed: false,
-            object: { type: 'Identifier', name: 'CRITTER' },
-            property: { type: 'Identifier', name: methodName }
-        },
-        arguments: args
-    }
-}
+const runtimeMethod = (methodName, args) =>
+    JS.CallExpression(
+        JS.MemberExpression(
+            JS.Identifier('CRITTER'),
+            JS.Identifier(methodName),
+            false
+        ),
+        args
+    )
 
 const reservedJSWords = new Set([
     'null', 'undefined', 'true', 'false',
@@ -150,24 +110,16 @@ const reservedJSWords = new Set([
     'throws', 'transient', 'volatile', 'yield'
 ])
 
-function ident (name) {
-    const escapedName = name.split('')
-        .map((ch) => /[A-Za-z]/.test(ch) ? ch : `_${ch.charCodeAt(0)}`)
-        .join('')
+const escapeChars = (name) => name.split('')
+    .map((ch) => /[A-Za-z]/.test(ch) ? ch : `_${ch.charCodeAt(0)}`)
+    .join('')
 
-    const withReserved = reservedJSWords.has(escapedName)
-        ? `_${escapedName}`
-        : escapedName
+const escapeReservedWords = (name) => reservedJSWords.has(name)
+    ? `_${name}`
+    : name
 
-    return {
-        type: 'Identifier',
-        name: withReserved
-    }
-}
+const ident = pipe([escapeChars, escapeReservedWords, JS.Identifier])
 
-function compile (critterAST) {
-    const jsAST = transform(critterAST)
-    return escodegen.generate(jsAST)
-}
+const compile = pipe([transform, escodegen.generate])
 
 module.exports = { compile }
