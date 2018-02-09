@@ -1,7 +1,21 @@
 const P = require('parsimmon')
 
+const tags = {
+    Program: tagWith('Program'),
+    FieldGet: tagWith('FieldGet'),
+    Record: tagWith('Record'),
+    FnExp: tagWith('FnExp'),
+    FnCall: tagWith('FnCall'),
+    Arg: tagWith('Arg'),
+    NamedArg: tagWith('NamedArg'),
+    Keyword: tagWith('Keyword'),
+    Number: tagWith('Number'),
+    String: tagWith('String'),
+    Ident: tagWith('Ident')
+}
+
 const Lang = P.createLanguage({
-    Program: (r) => r.Body.map(tagWith('Program')),
+    Program: (r) => r.Body.map(tags.Program),
     Expression: (r) => P.alt(
         r.Keyword,
         r.DotFnCall,
@@ -17,7 +31,7 @@ const Lang = P.createLanguage({
     FieldGet: (r) => P.seqMap(
         P.alt(r.Terminal, r.Record),
         r.Field.atLeast(1),
-        tagSeqWith('FieldGet')),
+        tagSeq(tags.FieldGet)),
 
     Record: (r) =>
         r.LBrk
@@ -25,7 +39,7 @@ const Lang = P.createLanguage({
             .then(r.Arg.sepBy(P.whitespace))
             .skip(P.optWhitespace)
             .skip(r.RBrk)
-            .map(tagWith('Record')),
+            .map(tags.Record),
 
     Body: (r) =>
         P.optWhitespace
@@ -37,7 +51,7 @@ const Lang = P.createLanguage({
         P.alt(
             P.seq(r.FnArgs, r.FnExpBody),
             r.FnExpBody.map((body) => [[], body])
-        ).map(spread(tagWith('FnExp'))),
+        ).map(spread(tags.FnExp)),
     FnExpBody: (r) =>
         r.LCurly
             .then(r.Body)
@@ -51,22 +65,21 @@ const Lang = P.createLanguage({
     FnCall: (r) => P.seqMap(
         P.alt(r.FieldGet, r.Terminal, r.Record),
         r.FnArgs.atLeast(1),
-        tagSeqWith('FnCall')),
+        tagSeq(tags.FnCall)),
 
-    DotFnArgs: (r) => P.seqMap(
+    DotFnArgs: (r) => P.seq(
         r.Dot.then(P.alt(r.FieldGet, r.Terminal, r.Record)),
-        r.FnArgs,
-        (ident, restArgs) => ({ ident, restArgs })
+        r.FnArgs
     ),
     DotFnCall: (r) => P.seqMap(
         P.alt(r.FnCall, r.FieldGet, r.Terminal, r.Record),
         r.DotFnArgs.atLeast(1),
         (firstArg, seq) => seq.reduce(
-            (acc, { ident, restArgs }) =>
-                ['FnCall', ident, [
-                    ['Arg', acc],
+            (acc, [ident, restArgs]) =>
+                tags.FnCall(ident, [
+                    tags.Arg(acc),
                     ...restArgs
-                ]],
+                ]),
             firstArg
         )
     ),
@@ -74,13 +87,13 @@ const Lang = P.createLanguage({
         P.seqMap(
             r.Ident.skip(r.Colon).skip(P.whitespace),
             r.Expression,
-            tagWith('NamedArg')),
-        r.Expression.map(tagWith('Arg'))),
+            tags.NamedArg),
+        r.Expression.map(tags.Arg)),
 
     Keyword: (r) => P.alt(
         r.KeywordAssignment,
         r.KeywordStatement
-    ).map(spread(tagWith('Keyword'))),
+    ).map(spread(tags.Keyword)),
     KeywordAssignment: (r) => P.seq(
         r.At.then(r.Ident).skip(P.whitespace),
         r.Ident.skip(P.whitespace).skip(r.Assignment).skip(P.whitespace),
@@ -108,11 +121,11 @@ const Lang = P.createLanguage({
     Assignment: () => P.string(':='),
 
     Terminal: (r) => P.alt(
-        r.HexNumber.map(tagWith('Number')),
-        r.Number.map(tagWith('Number')),
-        r.TaggedString.map(tagWith('String')),
-        r.String.map(tagWith('String')),
-        r.Ident.map(tagWith('Ident'))),
+        r.HexNumber.map(tags.Number),
+        r.Number.map(tags.Number),
+        r.TaggedString.map(tags.String),
+        r.String.map(tags.String),
+        r.Ident.map(tags.Ident)),
     Number: () => P.regexp(/-?[0-9]+(.[0-9]+)?/).map(Number),
     HexNumber: () => P.regexp(/0x[0-9A-Fa-f]+/).map(Number),
     TaggedString: (r) =>
@@ -146,13 +159,13 @@ function tagWith (tag) {
     return (...args) => [tag, ...args]
 }
 
-function tagSeqWith (tag) {
-    return (root, args) =>
-        args.reduce((acc, item) => [tag, acc, item], root)
+function tagSeq (tagger) {
+    return (init, args) =>
+        args.reduce((acc, item) => tagger(acc, item), init)
 }
 
 function spread (f) {
     return (xs) => f(...xs)
 }
 
-module.exports = { parse, expr }
+module.exports = { parse, expr, tags }
