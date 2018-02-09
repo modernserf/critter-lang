@@ -26,4 +26,14 @@ const _do = () => {}
 
 const _await = () => {}
 
-const log = ({0: value}) => { console.log('logging', value) }
+const toJSArray = (obj) => {
+    const arr = []
+    for (const key in obj) {
+        arr[key] = obj[key]
+    }
+    return arr
+}
+
+const log = (args) => {
+    console.log(toJSArray(args))
+}

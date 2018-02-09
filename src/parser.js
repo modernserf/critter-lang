@@ -1,23 +1,23 @@
 const P = require('parsimmon')
+const { tagConstructors } = require('./util')
 
-const tagWith = (tag) => (...args) => [tag, ...args]
 const tagSeq = (tagger) => (init, args) =>
     args.reduce((acc, item) => tagger(acc, item), init)
 const spread = (f) => (xs) => f(...xs)
 
-const tags = {
-    Program: tagWith('Program'),
-    FieldGet: tagWith('FieldGet'),
-    Record: tagWith('Record'),
-    FnExp: tagWith('FnExp'),
-    FnCall: tagWith('FnCall'),
-    Arg: tagWith('Arg'),
-    NamedArg: tagWith('NamedArg'),
-    Keyword: tagWith('Keyword'),
-    Number: tagWith('Number'),
-    String: tagWith('String'),
-    Ident: tagWith('Ident')
-}
+const tags = tagConstructors([
+    ['Program', 'body'],
+    ['Number', 'value'],
+    ['String', 'value'],
+    ['Ident', 'value'],
+    ['Record', 'args'],
+    ['FnCall', 'callee', 'args'],
+    ['FnExp', 'params', 'body'],
+    ['Arg', 'value'],
+    ['NamedArg', 'key', 'value'],
+    ['FieldGet', 'target', 'key'],
+    ['Keyword', 'keyword', 'assignment', 'value']
+])
 
 const Lang = P.createLanguage({
     Program: (r) => r.Body.map(tags.Program),

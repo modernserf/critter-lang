@@ -1,5 +1,5 @@
 const generate = require('@babel/generator').default
-const { pipe, Either, tagConstructors } = require('./util')
+const { pipe, Either, tagConstructors, match } = require('./util')
 
 const JS = tagConstructors([
     ['Program', 'body'],
@@ -17,29 +17,26 @@ const JS = tagConstructors([
     ['MemberExpression', 'object', 'property', 'computed']
 ])
 
-const match = (obj, onDefault) => ([type, ...args], index) =>
-    obj[type] ? obj[type](args, index) : onDefault(type, args, index)
-
 const oneItem = (f, xs) => xs.length ? [f(xs)] : []
 
 const transform = match({
-    Program: ([value]) =>
-        JS.Program(oneItem(buildSequence, value)),
-    Number: ([value]) =>
+    Program: ({ body }) =>
+        JS.Program(oneItem(buildSequence, body)),
+    Number: ({ value }) =>
         value >= 0
             ? JS.NumericLiteral(value)
             : JS.UnaryExpression('-', JS.NumericLiteral(-value), true),
-    String: ([value]) =>
+    String: ({ value }) =>
         JS.StringLiteral(value),
-    Ident: ([value]) =>
+    Ident: ({ value }) =>
         ident(value),
-    Record: ([args]) =>
+    Record: ({ args }) =>
         JS.ObjectExpression(args.map(transform)),
-    FnCall: ([callee, args]) =>
+    FnCall: ({ callee, args }) =>
         JS.CallExpression(transform(callee), [
             JS.ObjectExpression(args.map(transform))
         ]),
-    FnExp: ([params, body]) =>
+    FnExp: ({ params, body }) =>
         JS.ArrowFunctionExpression(
             oneItem(
                 (xs) => JS.ObjectExpression(xs.map(transform)),
@@ -48,26 +45,28 @@ const transform = match({
                 JS.ReturnStatement(buildSequence(body))
             ])
         ),
-    Arg: ([value], index) =>
+    Arg: ({ value }, index) =>
         JS.ObjectProperty(JS.StringLiteral(index), transform(value)),
-    NamedArg: ([key, value]) =>
+    NamedArg: ({ key, value }) =>
         JS.ObjectProperty(JS.StringLiteral(key), transform(value)),
-    FieldGet: ([target, key]) =>
+    FieldGet: ({ target, key }) =>
         runtimeMethod('getFields', [transform(target), JS.StringLiteral(key)]),
     Keyword: () => {
         throw new Error('Keyword must be compiled in function or program context')
     }
-}, (type) => {
-    throw new Error(`Unknown AST node ${type}`)
+}, (tag) => {
+    throw new Error(`Unknown AST node ${tag.type}`)
 })
 
 // converts @keyword blocks into continuation-passing style
 const buildSequence = pipe([
     ([head, ...tail]) => [head, tail],
     Either.right,
-    Either.filterm(([[type]]) => type === 'Keyword'),
+    Either.filterm(([{ type }]) => type === 'Keyword'),
+    // if not keyword
     Either.mapLeft(([head]) => transform(head)),
-    Either.fmap(([[_type, keyword, assignment, value], tail]) => [
+    // otherwise ...
+    Either.fmap(([{ keyword, assignment, value }, tail]) => [
         ident(keyword),
         transform(value),
         tail.length

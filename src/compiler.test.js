@@ -1,38 +1,43 @@
 const test = require('tape')
+const { tags } = require('./parser')
 const { compile } = require('./compiler')
+const {
+    FieldGet, Record, FnExp, FnCall, Arg, NamedArg, Keyword,
+    Number: Num, String: Str, Ident
+} = tags
 
 test('number literals', (t) => {
-    t.equals(compile(['Number', 123]), '123')
-    t.equals(compile(['Number', -0.2345]), '-0.2345')
+    t.equals(compile(Num(123)), '123')
+    t.equals(compile(Num(-0.2345)), '-0.2345')
 
     t.end()
 })
 
 test('string literals', (t) => {
-    t.equals(compile(['String', 'foo']), `"foo"`)
+    t.equals(compile(Str('foo')), `"foo"`)
     t.equals(
-        compile(['String', `This "text" has escaped characters`]),
+        compile(Str(`This "text" has escaped characters`)),
         `"This \\"text\\" has escaped characters"`)
 
     t.end()
 })
 
 test('identifier', (t) => {
-    t.equals(compile(['Ident', 'foobar']), 'foobar')
-    t.equals(compile(['Ident', '++=>']), '_43_43_61_62')
-    t.equals(compile(['Ident', '_43']), '_95_52_51')
-    t.equals(compile(['Ident', 'var']), '_var')
+    t.equals(compile(Ident('foobar')), 'foobar')
+    t.equals(compile(Ident('++=>')), '_43_43_61_62')
+    t.equals(compile(Ident('_43')), '_95_52_51')
+    t.equals(compile(Ident('var')), '_var')
 
     t.end()
 })
 
 test('record', (t) => {
-    const prog = ['Record', [
-        ['Arg', ['Ident', 'bar']],
-        ['Arg', ['String', 'baz']],
-        ['NamedArg', 'quux', ['Number', 123.45]],
-        ['NamedArg', 'snerf', ['Ident', 'snerf']]
-    ]]
+    const prog = Record([
+        Arg(Ident('bar')),
+        Arg(Str('baz')),
+        NamedArg('quux', Num(123.45)),
+        NamedArg('snerf', Ident('snerf'))
+    ])
 
     t.equals(compile(prog), [
         '{',
@@ -46,12 +51,12 @@ test('record', (t) => {
 })
 
 test('function call', (t) => {
-    const prog = ['FnCall', ['Ident', 'foo'], [
-        ['Arg', ['Ident', 'bar']],
-        ['Arg', ['String', 'baz']],
-        ['NamedArg', 'quux', ['Number', 123.45]],
-        ['NamedArg', 'snerf', ['Ident', 'snerf']]
-    ]]
+    const prog = FnCall(Ident('foo'), [
+        Arg(Ident('bar')),
+        Arg(Str('baz')),
+        NamedArg('quux', Num(123.45)),
+        NamedArg('snerf', Ident('snerf'))
+    ])
 
     t.equals(compile(prog), [
         `foo({`,
@@ -66,9 +71,9 @@ test('function call', (t) => {
 })
 
 test('function expression no args', (t) => {
-    const prog = ['FnExp', [], [
-        ['Ident', 'x']
-    ]]
+    const prog = FnExp([], [
+        Ident('x')
+    ])
     t.equals(compile(prog), [
         `() => {`,
         `  return x;`,
@@ -78,14 +83,14 @@ test('function expression no args', (t) => {
 })
 
 test('function expression with args', (t) => {
-    const prog = ['FnExp', [
-        ['Arg', ['Ident', 'x']]
+    const prog = FnExp([
+        Arg(Ident('x'))
     ], [
-        ['FnCall', ['Ident', '+'], [
-            ['Arg', ['Ident', 'x']],
-            ['Arg', ['Number', 1]]
-        ]]
-    ]]
+        FnCall(Ident('+'), [
+            Arg(Ident('x')),
+            Arg(Num(1))
+        ])
+    ])
 
     // TODO: how will shadowing work? are the scope rules close enough
     // that it will work "automatically"?
@@ -103,14 +108,14 @@ test('function expression with args', (t) => {
 })
 
 test('field access', (t) => {
-    t.equals(compile(['FieldGet', ['Ident', 'foo'], 'bar']), [
+    t.equals(compile(FieldGet(Ident('foo'), 'bar')), [
         `CRITTER.getFields(foo, "bar")`
     ].join('\n'))
     t.end()
 })
 
 test('bare keyword', (t) => {
-    const prog = ['Keyword', 'foo', null, ['Ident', 'bar']]
+    const prog = Keyword('foo', null, Ident('bar'))
     t.throws(() => {
         compile(prog)
     })
@@ -118,9 +123,9 @@ test('bare keyword', (t) => {
 })
 
 test('single keyword', (t) => {
-    const prog = ['FnExp', [], [
-        ['Keyword', 'foo', null, ['Ident', 'bar']]
-    ]]
+    const prog = FnExp([], [
+        Keyword('foo', null, Ident('bar'))
+    ])
 
     t.equals(compile(prog), [
         `() => {`,
@@ -131,11 +136,11 @@ test('single keyword', (t) => {
 })
 
 test('sequence of keywords', (t) => {
-    const prog = ['FnExp', [], [
-        ['Keyword', 'foo', null, ['Ident', 'bar']],
-        ['Keyword', 'baz', null, ['Ident', 'quux']],
-        ['Ident', 'snerf']
-    ]]
+    const prog = FnExp([], [
+        Keyword('foo', null, Ident('bar')),
+        Keyword('baz', null, Ident('quux')),
+        Ident('snerf')
+    ])
 
     t.equals(compile(prog), [
         `() => {`,
@@ -150,12 +155,12 @@ test('sequence of keywords', (t) => {
 })
 
 test('keyword assignments', (t) => {
-    const prog = ['FnExp', [], [
-        ['Keyword', 'foo', 'x', ['Ident', 'bar']],
-        ['FnCall', ['Ident', 'inc'], [
-            ['Arg', ['Ident', 'x']]
-        ]]
-    ]]
+    const prog = FnExp([], [
+        Keyword('foo', 'x', Ident('bar')),
+        FnCall(Ident('inc'), [
+            Arg(Ident('x'))
+        ])
+    ])
 
     t.equals(compile(prog), [
         `() => {`,

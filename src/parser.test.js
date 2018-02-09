@@ -127,10 +127,9 @@ test('field access', (t) => {
 test('function call sequence', (t) => {
     t.deepEquals(
         expr('foo()()'),
-        ['FnCall',
+        FnCall(
             FnCall(Ident('foo'), []),
-            []
-        ]
+            [])
     )
     t.end()
 })
