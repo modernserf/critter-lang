@@ -1,17 +1,19 @@
-const escodegen = require('escodegen')
+const generate = require('@babel/generator').default
 const { pipe, Either, tagConstructors } = require('./util')
 
 const JS = tagConstructors([
     ['Program', 'body'],
-    ['Literal', 'value'],
+    ['NumericLiteral', 'value'],
+    ['StringLiteral', 'value'],
     ['Identifier', 'name'],
     ['UnaryExpression', 'operator', 'argument', 'prefix'],
     ['ObjectExpression', 'properties'],
     ['CallExpression', 'callee', 'arguments'],
     ['FunctionExpression', 'params', 'body'],
+    ['ArrowFunctionExpression', 'params', 'body'],
     ['BlockStatement', 'body'],
     ['ReturnStatement', 'argument'],
-    ['Property', 'kind', 'key', 'value'],
+    ['ObjectProperty', 'key', 'value'],
     ['MemberExpression', 'object', 'property', 'computed']
 ])
 
@@ -25,10 +27,10 @@ const transform = match({
         JS.Program(oneItem(buildSequence, value)),
     Number: ([value]) =>
         value >= 0
-            ? JS.Literal(value)
-            : JS.UnaryExpression('-', JS.Literal(-value), true),
+            ? JS.NumericLiteral(value)
+            : JS.UnaryExpression('-', JS.NumericLiteral(-value), true),
     String: ([value]) =>
-        JS.Literal(value),
+        JS.StringLiteral(value),
     Ident: ([value]) =>
         ident(value),
     Record: ([args]) =>
@@ -38,7 +40,7 @@ const transform = match({
             JS.ObjectExpression(args.map(transform))
         ]),
     FnExp: ([params, body]) =>
-        JS.FunctionExpression(
+        JS.ArrowFunctionExpression(
             oneItem(
                 (xs) => JS.ObjectExpression(xs.map(transform)),
                 params),
@@ -47,11 +49,11 @@ const transform = match({
             ])
         ),
     Arg: ([value], index) =>
-        JS.Property('init', JS.Literal(index), transform(value)),
+        JS.ObjectProperty(JS.StringLiteral(index), transform(value)),
     NamedArg: ([key, value]) =>
-        JS.Property('init', JS.Literal(key), transform(value)),
+        JS.ObjectProperty(JS.StringLiteral(key), transform(value)),
     FieldGet: ([target, key]) =>
-        runtimeMethod('getFields', [transform(target), JS.Literal(key)]),
+        runtimeMethod('getFields', [transform(target), JS.StringLiteral(key)]),
     Keyword: () => {
         throw new Error('Keyword must be compiled in function or program context')
     }
@@ -69,7 +71,7 @@ const buildSequence = pipe([
         ident(keyword),
         transform(value),
         tail.length
-            ? JS.FunctionExpression(
+            ? JS.ArrowFunctionExpression(
                 assignment
                     ? [ident(assignment)]
                     : [],
@@ -120,6 +122,6 @@ const escapeReservedWords = (name) => reservedJSWords.has(name)
 
 const ident = pipe([escapeChars, escapeReservedWords, JS.Identifier])
 
-const compile = pipe([transform, escodegen.generate])
+const compile = pipe([transform, generate, (x) => x.code])
 
 module.exports = { compile }

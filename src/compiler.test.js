@@ -9,10 +9,10 @@ test('number literals', (t) => {
 })
 
 test('string literals', (t) => {
-    t.equals(compile(['String', 'foo']), `'foo'`)
+    t.equals(compile(['String', 'foo']), `"foo"`)
     t.equals(
         compile(['String', `This "text" has escaped characters`]),
-        `'This "text" has escaped characters'`)
+        `"This \\"text\\" has escaped characters"`)
 
     t.end()
 })
@@ -36,10 +36,10 @@ test('record', (t) => {
 
     t.equals(compile(prog), [
         '{',
-        '    0: bar,',
-        `    1: 'baz',`,
-        `    'quux': 123.45,`,
-        `    'snerf': snerf`,
+        '  0: bar,',
+        `  1: "baz",`,
+        `  "quux": 123.45,`,
+        `  "snerf": snerf`,
         '}'
     ].join('\n'))
     t.end()
@@ -55,10 +55,10 @@ test('function call', (t) => {
 
     t.equals(compile(prog), [
         `foo({`,
-        `    0: bar,`,
-        `    1: 'baz',`,
-        `    'quux': 123.45,`,
-        `    'snerf': snerf`,
+        `  0: bar,`,
+        `  1: "baz",`,
+        `  "quux": 123.45,`,
+        `  "snerf": snerf`,
         `})`
     ].join('\n'))
 
@@ -70,8 +70,8 @@ test('function expression no args', (t) => {
         ['Ident', 'x']
     ]]
     t.equals(compile(prog), [
-        `function () {`,
-        `    return x;`,
+        `() => {`,
+        `  return x;`,
         `}`
     ].join('\n'))
     t.end()
@@ -87,15 +87,16 @@ test('function expression with args', (t) => {
         ]]
     ]]
 
-    // TODO: should this compile to `function (args) { ...args.x ... }` ?
     // TODO: how will shadowing work? are the scope rules close enough
     // that it will work "automatically"?
     t.equals(compile(prog), [
-        `function ({ 0: x }) {`,
-        `    return _43({`,
-        `        0: x,`,
-        `        1: 1`,
-        `    });`,
+        `({`,
+        `  0: x`,
+        `}) => {`,
+        `  return _43({`,
+        `    0: x,`,
+        `    1: 1`,
+        `  });`,
         `}`
     ].join('\n'))
     t.end()
@@ -103,7 +104,7 @@ test('function expression with args', (t) => {
 
 test('field access', (t) => {
     t.equals(compile(['FieldGet', ['Ident', 'foo'], 'bar']), [
-        `CRITTER.getFields(foo, 'bar')`
+        `CRITTER.getFields(foo, "bar")`
     ].join('\n'))
     t.end()
 })
@@ -122,8 +123,8 @@ test('single keyword', (t) => {
     ]]
 
     t.equals(compile(prog), [
-        `function () {`,
-        `    return CRITTER.keyword(foo, bar);`,
+        `() => {`,
+        `  return CRITTER.keyword(foo, bar);`,
         `}`
     ].join('\n'))
     t.end()
@@ -137,12 +138,12 @@ test('sequence of keywords', (t) => {
     ]]
 
     t.equals(compile(prog), [
-        `function () {`,
-        `    return CRITTER.keyword(foo, bar, function () {`,
-        `        return CRITTER.keyword(baz, quux, function () {`,
-        `            return snerf;`,
-        `        });`,
+        `() => {`,
+        `  return CRITTER.keyword(foo, bar, () => {`,
+        `    return CRITTER.keyword(baz, quux, () => {`,
+        `      return snerf;`,
         `    });`,
+        `  });`,
         `}`
     ].join('\n'))
     t.end()
@@ -157,10 +158,12 @@ test('keyword assignments', (t) => {
     ]]
 
     t.equals(compile(prog), [
-        `function () {`,
-        `    return CRITTER.keyword(foo, bar, function (x) {`,
-        `        return inc({ 0: x });`,
+        `() => {`,
+        `  return CRITTER.keyword(foo, bar, x => {`,
+        `    return inc({`,
+        `      0: x`,
         `    });`,
+        `  });`,
         `}`
     ].join('\n'))
     t.end()
