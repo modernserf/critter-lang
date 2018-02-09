@@ -70,7 +70,7 @@ function transform ([type, value, meta], index) {
             kind: 'init'
         }
     case 'FieldGet':
-        return stdlibMethod('getFields', [
+        return runtimeMethod('getFields', [
             transform(value),
             { type: 'Literal', value: meta }
         ])
@@ -117,10 +117,10 @@ function buildSequence ([head, ...tail]) {
         })
     }
 
-    return stdlibMethod('keyword', args)
+    return runtimeMethod('keyword', args)
 }
 
-function stdlibMethod (methodName, args) {
+function runtimeMethod (methodName, args) {
     return {
         type: 'CallExpression',
         callee: {
@@ -140,6 +140,7 @@ const reservedJSWords = new Set([
     'function', 'if', 'in', 'instanceof', 'new', 'return',
     'switch', 'this', 'throw', 'try', 'typeof', 'var',
     'void', 'while', 'with',
+    'async', 'await',
     'abstract', 'boolean', 'byte', 'char', 'class',
     'const', 'double', 'enum', 'export', 'extends',
     'final', 'float', 'goto', 'implements', 'import',

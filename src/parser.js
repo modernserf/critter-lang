@@ -103,7 +103,7 @@ const Lang = P.createLanguage({
     Tag: () => P.string('#'),
     FieldOp: () => P.string('::'),
     Dot: () => P.string('.'),
-    Line: () => P.seq(P.optWhitespace, P.string('\n'), P.optWhitespace),
+    Line: () => P.seq(P.regex(/( |\t)*/), P.string('\n'), P.optWhitespace),
     At: () => P.string('@'),
     Assignment: () => P.string(':='),
 
@@ -127,11 +127,15 @@ const Lang = P.createLanguage({
                 .skip(r.Quote)),
     QuoteEscape: () => P.string('\\"').map(() => '"'),
     Quote: () => P.string('"'),
-    Ident: () => P.regexp(/[^\s():[\].{}]+/)
+    Ident: () => P.regexp(/[^\s():[\].{}#]+/)
 })
 
+function stripComments (str) {
+    return str.replace(/;.+\n/g, '')
+}
+
 function parse (text) {
-    return Lang.Program.tryParse(text)
+    return Lang.Program.tryParse(stripComments(text))
 }
 
 function expr (text) {
