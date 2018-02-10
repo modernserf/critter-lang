@@ -10,12 +10,12 @@ const tags = tagConstructors([
     ['Number', 'value'],
     ['String', 'value'],
     ['Ident', 'value'],
+    ['FieldGet', 'target', 'key'],
     ['Record', 'args'],
     ['FnCall', 'callee', 'args'],
     ['FnExp', 'params', 'body'],
     ['Arg', 'value'],
     ['NamedArg', 'key', 'value'],
-    ['FieldGet', 'target', 'key'],
     ['Keyword', 'keyword', 'assignment', 'value']
 ])
 
@@ -100,12 +100,12 @@ const Lang = P.createLanguage({
         r.KeywordStatement
     ).map(spread(tags.Keyword)),
     KeywordAssignment: (r) => P.seq(
-        r.At.then(r.Ident).skip(P.whitespace),
+        r.At.then(r.Expression).skip(P.whitespace),
         r.Ident.skip(P.whitespace).skip(r.Assignment).skip(P.whitespace),
         r.Expression
     ),
     KeywordStatement: (r) => P.seq(
-        r.At.then(r.Ident).skip(P.whitespace),
+        r.At.then(r.Expression).skip(P.whitespace),
         P.index.map(() => null),
         r.Expression
     ),

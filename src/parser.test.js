@@ -176,22 +176,10 @@ test('dot functions', (t) => {
     t.end()
 })
 
-test('precedence', (t) => {
-    t.deepEquals(
-        expr('foo::bar(baz).quux::snerf()'),
-        FnCall(FieldGet(Ident('quux'), 'snerf'), [
-            Arg(FnCall(FieldGet(Ident('foo'), 'bar'), [
-                Arg(Ident('baz'))
-            ]))
-        ])
-    )
-    t.end()
-})
-
 test('keywords', (t) => {
     t.deepEquals(
         expr('@foo bar(baz)'),
-        Keyword('foo', null,
+        Keyword(Ident('foo'), null,
             FnCall(Ident('bar'), [Arg(Ident('baz'))]))
     )
     t.end()
@@ -199,11 +187,29 @@ test('keywords', (t) => {
 
 test('keyword assignment', (t) => {
     t.deepEquals(
-        expr('@foo x := bar(baz)'),
-        Keyword('foo', 'x',
+        expr('@foo(quux) x := bar(baz)'),
+        Keyword(
+            FnCall(Ident('foo'), [Arg(Ident('quux'))]),
+            'x',
             FnCall(Ident('bar'), [
                 Arg(Ident('baz'))
             ]))
+    )
+    t.end()
+})
+
+test('precedence', (t) => {
+    t.deepEquals(
+        expr('@foo::bar(baz).quux::snerf() x := xyzzy()'),
+        Keyword(
+            FnCall(FieldGet(Ident('quux'), 'snerf'), [
+                Arg(FnCall(FieldGet(Ident('foo'), 'bar'), [
+                    Arg(Ident('baz'))
+                ]))
+            ]),
+            'x',
+            FnCall(Ident('xyzzy'), [])
+        )
     )
     t.end()
 })

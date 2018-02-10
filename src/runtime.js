@@ -4,10 +4,8 @@ const CRITTER = {
         if (key in obj) { return obj[key] }
         throw new Error(`KeyError: ${key}`)
     },
-    keyword: (fn, value, next) => {
-        const res = fn({ 0: value })
-        if (next) { next(res) }
-    }
+    keyword: (fn, value, next, assignment) =>
+        fn({ 0: value, 1: next, assignment })
 }
 
 const _dom = {
@@ -20,7 +18,7 @@ const _import = (_path) => {
     return _dom
 }
 
-const _let = ({ 0: x }) => x
+const _let = ({ 0: value, 1: next }) => next({ 0: value })
 
 const _do = () => {}
 

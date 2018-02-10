@@ -115,7 +115,7 @@ test('field access', (t) => {
 })
 
 test('bare keyword', (t) => {
-    const prog = Keyword('foo', null, Ident('bar'))
+    const prog = Keyword(Ident('foo'), null, Ident('bar'))
     t.throws(() => {
         compile(prog)
     })
@@ -124,12 +124,12 @@ test('bare keyword', (t) => {
 
 test('single keyword', (t) => {
     const prog = FnExp([], [
-        Keyword('foo', null, Ident('bar'))
+        Keyword(Ident('foo'), null, Ident('bar'))
     ])
 
     t.equals(compile(prog), [
         `() => {`,
-        `  return CRITTER.keyword(foo, bar);`,
+        `  return CRITTER.keyword(foo, bar, null);`,
         `}`
     ].join('\n'))
     t.end()
@@ -137,15 +137,15 @@ test('single keyword', (t) => {
 
 test('sequence of keywords', (t) => {
     const prog = FnExp([], [
-        Keyword('foo', null, Ident('bar')),
-        Keyword('baz', null, Ident('quux')),
+        Keyword(Ident('foo'), null, Ident('bar')),
+        Keyword(Ident('baz'), null, Ident('quux')),
         Ident('snerf')
     ])
 
     t.equals(compile(prog), [
         `() => {`,
-        `  return CRITTER.keyword(foo, bar, () => {`,
-        `    return CRITTER.keyword(baz, quux, () => {`,
+        `  return CRITTER.keyword(foo, bar, null, () => {`,
+        `    return CRITTER.keyword(baz, quux, null, () => {`,
         `      return snerf;`,
         `    });`,
         `  });`,
@@ -156,7 +156,7 @@ test('sequence of keywords', (t) => {
 
 test('keyword assignments', (t) => {
     const prog = FnExp([], [
-        Keyword('foo', 'x', Ident('bar')),
+        Keyword(Ident('foo'), 'x', Ident('bar')),
         FnCall(Ident('inc'), [
             Arg(Ident('x'))
         ])
@@ -164,7 +164,7 @@ test('keyword assignments', (t) => {
 
     t.equals(compile(prog), [
         `() => {`,
-        `  return CRITTER.keyword(foo, bar, x => {`,
+        `  return CRITTER.keyword(foo, bar, "x", x => {`,
         `    return inc({`,
         `      0: x`,
         `    });`,

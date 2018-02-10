@@ -67,8 +67,9 @@ const buildSequence = pipe([
     Either.mapLeft(([head]) => transform(head)),
     // otherwise ...
     Either.fmap(([{ keyword, assignment, value }, tail]) => [
-        ident(keyword),
+        transform(keyword),
         transform(value),
+        JS.StringLiteral(assignment),
         tail.length
             ? JS.ArrowFunctionExpression(
                 assignment
@@ -77,7 +78,7 @@ const buildSequence = pipe([
                 JS.BlockStatement([
                     JS.ReturnStatement(buildSequence(tail))
                 ])
-            ) : undefined
+            ) : null
     ]),
     Either.fmap((args) => args.filter((x) => x)),
     Either.fmap((args) => runtimeMethod('keyword', args)),
