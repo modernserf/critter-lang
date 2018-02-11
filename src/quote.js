@@ -34,8 +34,8 @@ function quote (token) {
             tags.Arg(quote(token.keyword)),
             tags.Arg(quote(token.value)),
             token.assignment
-                ? tags.NamedArg('binding', tags.String(token.assignment))
-                : null
+                ? tags.NamedArg('binding', quote(token.assignment))
+                : null,
         ].filter((x) => x))
     default:
         throw new Error(`not implemented: ${token.type} `)

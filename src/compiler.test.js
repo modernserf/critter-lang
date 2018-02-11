@@ -3,7 +3,7 @@ const { tags } = require('./parser')
 const { compile } = require('./compiler')
 const {
     FieldGet, Record, FnExp, FnCall, Arg, NamedArg, Keyword,
-    Number: Num, String: Str, Ident
+    Number: Num, String: Str, Ident,
 } = tags
 
 test('number literals', (t) => {
@@ -36,7 +36,7 @@ test('record', (t) => {
         Arg(Ident('bar')),
         Arg(Str('baz')),
         NamedArg('quux', Num(123.45)),
-        NamedArg('snerf', Ident('snerf'))
+        NamedArg('snerf', Ident('snerf')),
     ])
 
     t.equals(compile(prog), [
@@ -45,7 +45,7 @@ test('record', (t) => {
         `  1: "baz",`,
         `  "quux": 123.45,`,
         `  "snerf": snerf`,
-        '}'
+        '}',
     ].join('\n'))
     t.end()
 })
@@ -55,7 +55,7 @@ test('function call', (t) => {
         Arg(Ident('bar')),
         Arg(Str('baz')),
         NamedArg('quux', Num(123.45)),
-        NamedArg('snerf', Ident('snerf'))
+        NamedArg('snerf', Ident('snerf')),
     ])
 
     t.equals(compile(prog), [
@@ -64,7 +64,7 @@ test('function call', (t) => {
         `  1: "baz",`,
         `  "quux": 123.45,`,
         `  "snerf": snerf`,
-        `})`
+        `})`,
     ].join('\n'))
 
     t.end()
@@ -72,24 +72,24 @@ test('function call', (t) => {
 
 test('function expression no args', (t) => {
     const prog = FnExp([], [
-        Ident('x')
+        Ident('x'),
     ])
     t.equals(compile(prog), [
         `() => {`,
         `  return x;`,
-        `}`
+        `}`,
     ].join('\n'))
     t.end()
 })
 
 test('function expression with args', (t) => {
     const prog = FnExp([
-        Arg(Ident('x'))
+        Arg(Ident('x')),
     ], [
         FnCall(Ident('+'), [
             Arg(Ident('x')),
-            Arg(Num(1))
-        ])
+            Arg(Num(1)),
+        ]),
     ])
 
     // TODO: how will shadowing work? are the scope rules close enough
@@ -102,14 +102,14 @@ test('function expression with args', (t) => {
         `    0: x,`,
         `    1: 1`,
         `  });`,
-        `}`
+        `}`,
     ].join('\n'))
     t.end()
 })
 
 test('field access', (t) => {
     t.equals(compile(FieldGet(Ident('foo'), 'bar')), [
-        `CRITTER.getFields(foo, "bar")`
+        `CRITTER.getFields(foo, "bar")`,
     ].join('\n'))
     t.end()
 })
@@ -124,13 +124,13 @@ test('bare keyword', (t) => {
 
 test('single keyword', (t) => {
     const prog = FnExp([], [
-        Keyword(Ident('foo'), null, Ident('bar'))
+        Keyword(Ident('foo'), null, Ident('bar')),
     ])
 
     t.equals(compile(prog), [
         `() => {`,
         `  return CRITTER.keyword(foo, bar, null);`,
-        `}`
+        `}`,
     ].join('\n'))
     t.end()
 })
@@ -139,7 +139,7 @@ test('sequence of keywords', (t) => {
     const prog = FnExp([], [
         Keyword(Ident('foo'), null, Ident('bar')),
         Keyword(Ident('baz'), null, Ident('quux')),
-        Ident('snerf')
+        Ident('snerf'),
     ])
 
     t.equals(compile(prog), [
@@ -149,27 +149,30 @@ test('sequence of keywords', (t) => {
         `      return snerf;`,
         `    });`,
         `  });`,
-        `}`
+        `}`,
     ].join('\n'))
     t.end()
 })
 
 test('keyword assignments', (t) => {
     const prog = FnExp([], [
-        Keyword(Ident('foo'), 'x', Ident('bar')),
+        Keyword(Ident('foo'), Ident('x'), Ident('bar')),
         FnCall(Ident('inc'), [
-            Arg(Ident('x'))
-        ])
+            Arg(Ident('x')),
+        ]),
     ])
 
     t.equals(compile(prog), [
         `() => {`,
-        `  return CRITTER.keyword(foo, bar, "x", x => {`,
+        `  return CRITTER.keyword(foo, bar, {`,
+        `    0: "Ident",`,
+        `    1: "x"`,
+        `  }, x => {`,
         `    return inc({`,
         `      0: x`,
         `    });`,
         `  });`,
-        `}`
+        `}`,
     ].join('\n'))
     t.end()
 })

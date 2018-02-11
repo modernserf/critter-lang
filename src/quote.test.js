@@ -81,7 +81,7 @@ test('quotes a record', (t) => {
 test('quotes a record assignment', (t) => {
     t.deepEquals(
         quote(expr(`@foo x := bar`)),
-        expr(`[#Keyword [#Ident #foo] [#Ident #bar] binding: #x]`)
+        expr(`[#Keyword [#Ident #foo] [#Ident #bar] binding: [#Ident #x]]`)
     )
     t.end()
 })

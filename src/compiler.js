@@ -1,4 +1,5 @@
 const generate = require('@babel/generator').default
+const { quote } = require('./quote')
 const { pipe, Either, tagConstructors, match } = require('./util')
 
 const JS = tagConstructors([
@@ -14,7 +15,8 @@ const JS = tagConstructors([
     ['BlockStatement', 'body'],
     ['ReturnStatement', 'argument'],
     ['ObjectProperty', 'key', 'value'],
-    ['MemberExpression', 'object', 'property', 'computed']
+    ['MemberExpression', 'object', 'property', 'computed'],
+    ['NullLiteral'],
 ])
 
 const oneItem = (f, xs) => xs.length ? [f(xs)] : []
@@ -34,7 +36,7 @@ const transform = match({
         JS.ObjectExpression(args.map(transform)),
     FnCall: ({ callee, args }) =>
         JS.CallExpression(transform(callee), [
-            JS.ObjectExpression(args.map(transform))
+            JS.ObjectExpression(args.map(transform)),
         ]),
     FnExp: ({ params, body }) =>
         JS.ArrowFunctionExpression(
@@ -42,7 +44,7 @@ const transform = match({
                 (xs) => JS.ObjectExpression(xs.map(transform)),
                 params),
             JS.BlockStatement([
-                JS.ReturnStatement(buildSequence(body))
+                JS.ReturnStatement(buildSequence(body)),
             ])
         ),
     Arg: ({ value }, index) =>
@@ -53,7 +55,7 @@ const transform = match({
         runtimeMethod('getFields', [transform(target), JS.StringLiteral(key)]),
     Keyword: () => {
         throw new Error('Keyword must be compiled in function or program context')
-    }
+    },
 }, (tag) => {
     throw new Error(`Unknown AST node ${tag.type}`)
 })
@@ -69,20 +71,22 @@ const buildSequence = pipe([
     Either.fmap(([{ keyword, assignment, value }, tail]) => [
         transform(keyword),
         transform(value),
-        JS.StringLiteral(assignment),
+        assignment
+            ? transform(quote(assignment))
+            : JS.NullLiteral(),
         tail.length
             ? JS.ArrowFunctionExpression(
                 assignment
-                    ? [ident(assignment)]
+                    ? [ident(assignment.value)]
                     : [],
                 JS.BlockStatement([
-                    JS.ReturnStatement(buildSequence(tail))
+                    JS.ReturnStatement(buildSequence(tail)),
                 ])
-            ) : null
+            ) : null,
     ]),
     Either.fmap((args) => args.filter((x) => x)),
     Either.fmap((args) => runtimeMethod('keyword', args)),
-    Either.unwrap
+    Either.unwrap,
 ])
 
 const runtimeMethod = (methodName, args) =>
@@ -109,7 +113,7 @@ const reservedJSWords = new Set([
     'int', 'interface', 'let', 'long', 'native',
     'package', 'private', 'protected', 'public',
     'short', 'static', 'super', 'synchronized',
-    'throws', 'transient', 'volatile', 'yield'
+    'throws', 'transient', 'volatile', 'yield',
 ])
 
 const escapeChars = (name) => name.split('')
