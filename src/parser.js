@@ -1,8 +1,6 @@
 const { tokenize } = require('./lexer')
-const {
-    tagConstructors, token, seq, alt, map, done, lazy, many,
-    maybeSepBy, wrapWith, spreadMaybe,
-} = require('./util')
+const { tagConstructors, comp } = require('./util')
+const { token, seq, alt, map, done, lazy, many, maybeSepBy, wrapWith, spreadMaybe } = require('./parser-combinators')
 
 const tagSeq = (tagger) => (init, args) =>
     args.reduce((acc, item) => tagger(acc, item), init)
@@ -48,8 +46,8 @@ const _ = many(space)
 const __ = many(space, 1)
 
 const namedArg = lazy(() => map(
-    seq([token('Ident'), token('Colon'), _, expression]),
-    ([{ value }, _, __, expr]) => tags.NamedArg(value, expr)
+    seq([ident, token('Colon'), _, expression]),
+    ([key, _, __, value]) => tags.NamedArg(key, value)
 ))
 
 const indexArg = lazy(() => map(expression, tags.Arg))
@@ -95,8 +93,8 @@ const binding = alt([
 ])
 
 const namedBindArg = map(
-    seq([token('Ident'), token('Colon'), _, binding]),
-    ([{ value }, _, __, expr]) => tags.NamedArg(value, expr))
+    seq([ident, token('Colon'), _, binding]),
+    ([value, _, __, expr]) => tags.NamedArg(value, expr))
 const indexBindArg = map(binding, tags.Arg)
 const bindArg = alt([namedBindArg, indexBindArg])
 
@@ -134,26 +132,20 @@ const dotFnCall = map(
 
 const keywordStatement = lazy(() => map(
     seq([
-        token('At'),
-        expression,
-        __,
+        wrapWith(expression, token('At'), __),
         expression,
     ]),
-    ([_, keyword, __, value]) => tags.Keyword(keyword, null, value)
+    ([keyword, value]) => tags.Keyword(keyword, null, value)
 ))
 
 const keywordBinding = lazy(() => map(
     seq([
-        token('At'),
-        expression,
-        __,
+        wrapWith(expression, token('At'), __),
         binding,
-        __,
-        token('Assignment'),
-        __,
+        wrapWith(token('Assignment'), __),
         expression,
     ]),
-    (args) => tags.Keyword(args[1], args[3], args[7])
+    ([kw, bind, _, value]) => tags.Keyword(kw, bind, value)
 ))
 
 const keyword = alt([keywordBinding, keywordStatement])
@@ -174,7 +166,7 @@ const body = wrapWith(maybeSepBy(expression, __), _)
 
 const program = map(body, tags.Program)
 
-const expr = (str) => done(expression)(tokenize(str))
-const parse = (str) => done(program)(tokenize(str))
+const expr = comp(done(expression), tokenize)
+const parse = comp(done(program), tokenize)
 
 module.exports = { parse, expr, tags }

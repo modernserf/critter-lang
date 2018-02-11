@@ -1,9 +1,8 @@
 const { tags } = require('./parser')
 const { match } = require('./util')
 
-const record = (args) => tags.Record(
-    args.map((arg) => tags.Arg(arg))
-)
+const record = (args) =>
+    tags.Record(args.map((arg) => tags.Arg(arg)))
 
 const tagged = (token, ...body) =>
     record([tags.String(token.type)].concat(body))

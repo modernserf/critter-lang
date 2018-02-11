@@ -1,4 +1,5 @@
-const { alt, seq, chars, notEq, many, map, one, flatten, comp, maybe, done } = require('./util')
+const { alt, seq, chars, notEq, many, map, one, maybe, done } = require('./parser-combinators')
+const { flatten, comp } = require('./util')
 
 const tag = (type) => (value) => ({ type, value })
 
@@ -59,6 +60,6 @@ const token = alt([
 
 const tokenSeq = many(token)
 
-const tokenize = (str) => done(tokenSeq)(Array.from(str))
+const tokenize = comp(done(tokenSeq), Array.from)
 
 module.exports = { tokenize }
