@@ -61,7 +61,6 @@ test('quotes a fn call', (t) => {
 test('quotes a fn def', (t) => {
     t.deepEquals(
         quote(expr(`(x foo: y){ [x y] }`)),
-        // why does this take so long to parse?
         expr(`[#FnExp
             [[#Ident #x] foo: [#Ident #y]]
             [[#Record [[#Ident #x] [#Ident #y]]]]

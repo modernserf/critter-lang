@@ -160,12 +160,14 @@ const keyword = alt([keywordBinding, keywordStatement])
 
 const expression = alt([
     keyword,
+    record,
+    fnExp,
+    map(number, tags.Number),
+    map(string, tags.String),
     dotFnCall,
     fnCall,
     fieldGet,
-    fnExp,
-    record,
-    terminal,
+    map(ident, tags.Ident),
 ])
 
 const body = wrapWith(maybeSepBy(expression, __), _)

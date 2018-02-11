@@ -165,7 +165,7 @@ test.skip('destructuring in function args')
 
 test('dot functions', (t) => {
     t.deepEquals(
-        expr(`foo.bar(baz).quux()`),
+        expr(`foo.bar(baz).quux`),
         FnCall(Ident('quux'), [
             Arg(FnCall(Ident('bar'), [
                 Arg(Ident('foo')),
