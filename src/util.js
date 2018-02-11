@@ -16,7 +16,7 @@ const Either = {
     filterm: (p) => Either.bind(cond(p, Either.right, Either.left)),
     guard: (isLeft, mapLeft) => Either.bind(cond(isLeft,
         comp(Either.left, mapLeft),
-        Either.right))
+        Either.right)),
 }
 
 const tagger = (type, keys) => (...args) =>
@@ -30,4 +30,119 @@ const tagConstructors = (defs) => defs.reduce((obj, [type, ...keys]) =>
 const match = (obj, onDefault) => (tag, index) =>
     obj[tag.type] ? obj[tag.type](tag, index) : onDefault(tag, index)
 
-module.exports = { pipe, Either, tagConstructors, match }
+const token = (type) => (input) => {
+    if (!input.length) {
+        return { ok: false, error: ['eof'] }
+    }
+    return type === input[0].type
+        ? { ok: true, value: input[0], nextInput: input.slice(1) }
+        : { ok: false, error: ['no_match', type, input[0]] }
+}
+
+const seq = (ps) => (input) => {
+    const state = { ok: true, value: [], nextInput: input }
+    for (const p of ps) {
+        const res = p(state.nextInput)
+        if (!res.ok) { return res }
+        state.value.push(res.value)
+        state.nextInput = res.nextInput
+    }
+    return state
+}
+
+const alt = (ps) => (input) => {
+    for (const p of ps) {
+        const res = p(input)
+        if (res.ok) { return res }
+    }
+    return { ok: false, error: ['no_alts'] }
+}
+
+const map = (p, f) => (input) => {
+    const res = p(input)
+    return res.ok ? { ...res, value: f(res.value) } : res
+}
+
+const many = (p, min = 0, max = Infinity) => (input) => {
+    const state = { ok: true, value: [], nextInput: input }
+    let i = 0
+    while (state.nextInput.length) {
+        if (i > max) {
+            return { ok: false, error: ['over_max'] }
+        }
+        const res = p(state.nextInput)
+        if (!res.ok) { break }
+        state.value.push(res.value)
+        state.nextInput = res.nextInput
+        i++
+    }
+    if (i < min) {
+        return { ok: false, error: ['below_min'] }
+    }
+
+    return state
+}
+
+const maybe = (p) => (input) => {
+    const res = p(input)
+    return res.ok
+        ? { ...res, value: [res.value] }
+        : { ok: true, value: [], nextInput: input }
+}
+
+const sepBy = (p, other) => map(
+    seq([
+        p,
+        many(map(
+            seq([other, p]),
+            ([_, pVal]) => pVal
+        )),
+    ]),
+    ([first, rest]) => [first, ...rest]
+)
+
+const flatten = (arr) => [].concat(...arr)
+const spreadMaybe = (p) => map(maybe(p), flatten)
+const maybeSepBy = (p, other) => spreadMaybe(sepBy(p, other))
+
+const done = (p) => (input) => {
+    const res = p(input)
+    if (!res.ok) { throw new Error(res.error.join()) }
+    if (res.nextInput.length) {
+        throw new Error('missing_eof')
+    }
+    return res.value
+}
+
+const lazy = (f) => {
+    let memo = null
+    return (input) => {
+        if (memo) { return memo(input) }
+        memo = f()
+        return memo(input)
+    }
+}
+
+const wrapWith = (p, l, r) => map(
+    seq([l, p, r || l]),
+    ([_, value]) => value
+)
+
+module.exports = {
+    pipe,
+    Either,
+    tagConstructors,
+    match,
+    token,
+    seq,
+    alt,
+    map,
+    many,
+    maybe,
+    sepBy,
+    maybeSepBy,
+    done,
+    lazy,
+    wrapWith,
+    spreadMaybe,
+}

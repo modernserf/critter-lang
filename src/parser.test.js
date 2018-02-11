@@ -2,7 +2,7 @@ const test = require('tape')
 const { expr, tags } = require('./parser')
 const {
     FieldGet, Record, FnExp, FnCall, Arg, NamedArg, Keyword,
-    Number: Num, String: Str, Ident
+    Number: Num, String: Str, Ident,
 } = tags
 
 test('parses a number', (t) => {
@@ -58,33 +58,6 @@ test('parses an identifier', (t) => {
     t.end()
 })
 
-test('parses a fn call', (t) => {
-    t.deepEquals(
-        expr('foo()'),
-        FnCall(Ident('foo'), [])
-    )
-
-    t.deepEquals(
-        expr('foo(bar "baz" 123.45)'),
-        FnCall(Ident('foo'), [
-            Arg(Ident('bar')),
-            Arg(Str('baz')),
-            Arg(Num(123.45))
-        ])
-    )
-
-    t.deepEquals(
-        expr('foo(bar "baz" quux: 123.45 snerf: snerf)'),
-        FnCall(Ident('foo'), [
-            Arg(Ident('bar')),
-            Arg(Str('baz')),
-            NamedArg('quux', Num(123.45)),
-            NamedArg('snerf', Ident('snerf'))
-        ])
-    )
-    t.end()
-})
-
 test('parses a record', (t) => {
     t.deepEquals(
         expr('[]'),
@@ -96,7 +69,7 @@ test('parses a record', (t) => {
         Record([
             Arg(Ident('bar')),
             Arg(Record([ Arg(Str('baz')) ])),
-            Arg(Num(123.45))
+            Arg(Num(123.45)),
         ])
     )
 
@@ -106,7 +79,7 @@ test('parses a record', (t) => {
             Arg(Ident('bar')),
             Arg(Str('baz')),
             NamedArg('quux', Num(123.45)),
-            NamedArg('snerf', Ident('snerf'))
+            NamedArg('snerf', Ident('snerf')),
         ])
     )
     t.end()
@@ -120,6 +93,33 @@ test('field access', (t) => {
                 FieldGet(Ident('foo'), 'bar'),
                 'baz'),
             0)
+    )
+    t.end()
+})
+
+test('parses a fn call', (t) => {
+    t.deepEquals(
+        expr('foo()'),
+        FnCall(Ident('foo'), [])
+    )
+
+    t.deepEquals(
+        expr('foo(bar "baz" 123.45)'),
+        FnCall(Ident('foo'), [
+            Arg(Ident('bar')),
+            Arg(Str('baz')),
+            Arg(Num(123.45)),
+        ])
+    )
+
+    t.deepEquals(
+        expr('foo(bar "baz" quux: 123.45 snerf: snerf)'),
+        FnCall(Ident('foo'), [
+            Arg(Ident('bar')),
+            Arg(Str('baz')),
+            NamedArg('quux', Num(123.45)),
+            NamedArg('snerf', Ident('snerf')),
+        ])
     )
     t.end()
 })
@@ -138,7 +138,7 @@ test('function definition, no args', (t) => {
     t.deepEquals(
         expr(`{ x }`),
         FnExp([], [
-            Ident('x')
+            Ident('x'),
         ])
     )
     t.end()
@@ -149,12 +149,12 @@ test('function definition, with args', (t) => {
         expr(`(x foo: y){ [x y] }`),
         FnExp([
             Arg(Ident('x')),
-            NamedArg('foo', Ident('y'))
+            NamedArg('foo', Ident('y')),
         ], [
             Record([
                 Arg(Ident('x')),
-                Arg(Ident('y'))
-            ])
+                Arg(Ident('y')),
+            ]),
         ])
     )
     t.end()
@@ -169,8 +169,8 @@ test('dot functions', (t) => {
         FnCall(Ident('quux'), [
             Arg(FnCall(Ident('bar'), [
                 Arg(Ident('foo')),
-                Arg(Ident('baz'))
-            ]))
+                Arg(Ident('baz')),
+            ])),
         ])
     )
     t.end()
@@ -190,9 +190,9 @@ test('keyword assignment', (t) => {
         expr('@foo(quux) x := bar(baz)'),
         Keyword(
             FnCall(Ident('foo'), [Arg(Ident('quux'))]),
-            'x',
+            Ident('x'),
             FnCall(Ident('bar'), [
-                Arg(Ident('baz'))
+                Arg(Ident('baz')),
             ]))
     )
     t.end()
@@ -204,10 +204,10 @@ test('precedence', (t) => {
         Keyword(
             FnCall(FieldGet(Ident('quux'), 'snerf'), [
                 Arg(FnCall(FieldGet(Ident('foo'), 'bar'), [
-                    Arg(Ident('baz'))
-                ]))
+                    Arg(Ident('baz')),
+                ])),
             ]),
-            'x',
+            Ident('x'),
             FnCall(Ident('xyzzy'), [])
         )
     )

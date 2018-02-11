@@ -1,5 +1,8 @@
-const P = require('parsimmon')
-const { tagConstructors } = require('./util')
+const { tokenize } = require('./lexer')
+const {
+    tagConstructors, token, seq, alt, map, done, lazy, many,
+    maybeSepBy, wrapWith, spreadMaybe,
+} = require('./util')
 
 const tagSeq = (tagger) => (init, args) =>
     args.reduce((acc, item) => tagger(acc, item), init)
@@ -16,140 +19,160 @@ const tags = tagConstructors([
     ['FnExp', 'params', 'body'],
     ['Arg', 'value'],
     ['NamedArg', 'key', 'value'],
-    ['Keyword', 'keyword', 'assignment', 'value']
+    ['Keyword', 'keyword', 'assignment', 'value'],
 ])
 
-const Lang = P.createLanguage({
-    Program: (r) => r.Body.map(tags.Program),
-    Expression: (r) => P.alt(
-        r.Keyword,
-        r.DotFnCall,
-        r.FnCall,
-        r.FieldGet,
-        r.FnExp,
-        r.Record,
-        r.Terminal),
-    Field: (r) =>
-        P.optWhitespace
-            .then(r.FieldOp)
-            .then(P.alt(r.Number, r.Ident)),
-    FieldGet: (r) => P.seqMap(
-        P.alt(r.Terminal, r.Record),
-        r.Field.atLeast(1),
-        tagSeq(tags.FieldGet)),
+const number = map(
+    alt([token('HexNumber'), token('DecNumber')]),
+    ({ value }) => Number(value))
 
-    Record: (r) =>
-        r.LBrk
-            .then(P.optWhitespace)
-            .then(r.Arg.sepBy(P.whitespace))
-            .skip(P.optWhitespace)
-            .skip(r.RBrk)
-            .map(tags.Record),
+const string = map(
+    alt([token('TaggedString'), token('QuotedString')]),
+    ({ value: [_, value] }) => value
+)
 
-    Body: (r) =>
-        P.optWhitespace
-            .then(r.Expression.sepBy(r.Line))
-            .skip(P.optWhitespace),
+const ident = map(token('Ident'), ({ value }) => value)
 
-    // TODO: ([Arg: Ident | DestructureIdent]+){ Body }
-    FnExp: (r) =>
-        P.alt(
-            P.seq(r.FnArgs, r.FnExpBody),
-            r.FnExpBody.map((body) => [[], body])
-        ).map(spread(tags.FnExp)),
-    FnExpBody: (r) =>
-        r.LCurly
-            .then(r.Body)
-            .skip(r.RCurly),
+const terminal = alt([
+    map(number, tags.Number),
+    map(string, tags.String),
+    map(ident, tags.Ident),
+])
 
-    FnArgs: (r) => r.LParen
-        .then(P.optWhitespace)
-        .then(r.Arg.sepBy(P.whitespace))
-        .skip(P.optWhitespace)
-        .skip(r.RParen),
-    FnCall: (r) => P.seqMap(
-        P.alt(r.FieldGet, r.Terminal, r.Record),
-        r.FnArgs.atLeast(1),
-        tagSeq(tags.FnCall)),
+const space = alt([
+    token('Whitespace'),
+    token('Comment'),
+])
 
-    DotFnArgs: (r) => P.seq(
-        r.Dot.then(P.alt(r.FieldGet, r.Terminal, r.Record)),
-        r.FnArgs
-    ),
-    DotFnCall: (r) => P.seqMap(
-        P.alt(r.FnCall, r.FieldGet, r.Terminal, r.Record),
-        r.DotFnArgs.atLeast(1),
-        (firstArg, seq) => seq.reduce(
-            (acc, [ident, restArgs]) =>
-                tags.FnCall(ident, [
-                    tags.Arg(acc),
-                    ...restArgs
-                ]),
-            firstArg
-        )
-    ),
-    Arg: (r) => P.alt(
-        P.seqMap(
-            r.Ident.skip(r.Colon).skip(P.whitespace),
-            r.Expression,
-            tags.NamedArg),
-        r.Expression.map(tags.Arg)),
+const _ = many(space)
+const __ = many(space, 1)
 
-    Keyword: (r) => P.alt(
-        r.KeywordAssignment,
-        r.KeywordStatement
-    ).map(spread(tags.Keyword)),
-    KeywordAssignment: (r) => P.seq(
-        r.At.then(r.Expression).skip(P.whitespace),
-        r.Ident.skip(P.whitespace).skip(r.Assignment).skip(P.whitespace),
-        r.Expression
-    ),
-    KeywordStatement: (r) => P.seq(
-        r.At.then(r.Expression).skip(P.whitespace),
-        P.index.map(() => null),
-        r.Expression
-    ),
+const namedArg = lazy(() => map(
+    seq([token('Ident'), token('Colon'), _, expression]),
+    ([{ value }, _, __, expr]) => tags.NamedArg(value, expr)
+))
 
-    // punctuation
-    LBrk: () => P.string('['),
-    RBrk: () => P.string(']'),
-    LCurly: () => P.string('{'),
-    RCurly: () => P.string('}'),
-    LParen: () => P.string('('),
-    RParen: () => P.string(')'),
-    Colon: () => P.string(':'),
-    Tag: () => P.string('#'),
-    FieldOp: () => P.string('::'),
-    Dot: () => P.string('.'),
-    Line: () => P.seq(P.regex(/( |\t)*/), P.string('\n'), P.optWhitespace),
-    At: () => P.string('@'),
-    Assignment: () => P.string(':='),
+const indexArg = lazy(() => map(expression, tags.Arg))
 
-    Terminal: (r) => P.alt(
-        r.HexNumber.map(tags.Number),
-        r.Number.map(tags.Number),
-        r.TaggedString.map(tags.String),
-        r.String.map(tags.String),
-        r.Ident.map(tags.Ident)),
-    Number: () => P.regexp(/-?[0-9]+(.[0-9]+)?/).map(Number),
-    HexNumber: () => P.regexp(/0x[0-9A-Fa-f]+/).map(Number),
-    TaggedString: (r) =>
-        r.Tag
-            .then(r.Ident),
-    String: (r) =>
-        r.Quote
-            .then(P.alt(
-                r.QuoteEscape,
-                P.regexp(/[^"]/))
-                .many().map((x) => x.join(''))
-                .skip(r.Quote)),
-    QuoteEscape: () => P.string('\\"').map(() => '"'),
-    Quote: () => P.string('"'),
-    Ident: () => P.regexp(/[^\s():[\].{}#]+/)
-})
+const arg = alt([namedArg, indexArg])
 
-const stripComments = (str) => str.replace(/;.+\n/g, '')
-const parse = (text) => Lang.Program.tryParse(stripComments(text))
-const expr = (text) => Lang.Expression.tryParse(text)
+const record = map(
+    wrapWith(
+        wrapWith(maybeSepBy(arg, __), _),
+        token('LBrk'),
+        token('RBrk')),
+    tags.Record
+)
+
+const field = map(
+    seq([_, token('FieldOp'), alt([number, ident])]),
+    ([_, __, key]) => key
+)
+
+const fieldGet = map(
+    seq([alt([record, terminal]), many(field, 1)]),
+    spread(tagSeq(tags.FieldGet))
+)
+
+const fnArgs = wrapWith(
+    wrapWith(maybeSepBy(arg, __), _),
+    token('LParen'),
+    token('RParen'))
+
+const fnCall = map(
+    seq([
+        alt([fieldGet, record, terminal]),
+        many(fnArgs, 1),
+    ]),
+    spread(tagSeq(tags.FnCall)))
+
+const fnBody = lazy(() =>
+    wrapWith(body, token('LCurly'), token('RCurly')))
+
+// TODO: destructuring
+const binding = alt([
+    map(ident, tags.Ident),
+])
+
+const namedBindArg = map(
+    seq([token('Ident'), token('Colon'), _, binding]),
+    ([{ value }, _, __, expr]) => tags.NamedArg(value, expr))
+const indexBindArg = map(binding, tags.Arg)
+const bindArg = alt([namedBindArg, indexBindArg])
+
+const fnParams = wrapWith(
+    wrapWith(maybeSepBy(bindArg, __), _),
+    token('LParen'),
+    token('RParen')
+)
+
+const fnExp = alt([
+    map(seq([fnParams, fnBody]), spread(tags.FnExp)),
+    map(fnBody, (body) => tags.FnExp([], body)),
+])
+
+const dotArgs = seq([
+    token('Dot'),
+    alt([fieldGet, record, terminal]),
+    spreadMaybe(fnArgs),
+])
+
+const dotFnCall = map(
+    seq([
+        alt([fnCall, fieldGet, record, terminal]),
+        many(dotArgs, 1),
+    ]),
+    ([firstArg, seq]) => seq.reduce(
+        (acc, [_, ident, restArgs]) =>
+            tags.FnCall(ident, [
+                tags.Arg(acc),
+                ...restArgs,
+            ]),
+        firstArg
+    )
+)
+
+const keywordStatement = lazy(() => map(
+    seq([
+        token('At'),
+        expression,
+        __,
+        expression,
+    ]),
+    ([_, keyword, __, value]) => tags.Keyword(keyword, null, value)
+))
+
+const keywordBinding = lazy(() => map(
+    seq([
+        token('At'),
+        expression,
+        __,
+        binding,
+        __,
+        token('Assignment'),
+        __,
+        expression,
+    ]),
+    (args) => tags.Keyword(args[1], args[3], args[7])
+))
+
+const keyword = alt([keywordBinding, keywordStatement])
+
+const expression = alt([
+    keyword,
+    dotFnCall,
+    fnCall,
+    fieldGet,
+    fnExp,
+    record,
+    terminal,
+])
+
+const body = wrapWith(maybeSepBy(expression, __), _)
+
+const program = map(body, tags.Program)
+
+const expr = (str) => done(expression)(tokenize(str))
+const parse = (str) => done(program)(tokenize(str))
 
 module.exports = { parse, expr, tags }
