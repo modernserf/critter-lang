@@ -1,10 +1,9 @@
 const { tokenize } = require('./lexer')
-const { tagConstructors, comp } = require('./util')
-const { token, seq, alt, map, done, lazy, many, maybeSepBy, wrapWith, spreadMaybe } = require('./parser-combinators')
+const { tagConstructors, comp, spread } = require('./util')
+const { token, seq, alt, map, done, lazy, star, kplus, maybeSepBy, wrapWith, spreadMaybe } = require('./parser-combinators')
 
 const tagSeq = (tagger) => (init, args) =>
     args.reduce((acc, item) => tagger(acc, item), init)
-const spread = (f) => (xs) => f(...xs)
 
 const tags = tagConstructors([
     ['Program', 'body'],
@@ -42,8 +41,8 @@ const space = alt([
     token('Comment'),
 ])
 
-const _ = many(space)
-const __ = many(space, 1)
+const _ = star(space)
+const __ = kplus(space)
 
 const namedArg = lazy(() => map(
     seq([ident, token('Colon'), _, expression]),
@@ -68,7 +67,7 @@ const field = map(
 )
 
 const fieldGet = map(
-    seq([alt([record, terminal]), many(field, 1)]),
+    seq([alt([record, terminal]), kplus(field)]),
     spread(tagSeq(tags.FieldGet))
 )
 
@@ -80,7 +79,7 @@ const fnArgs = wrapWith(
 const fnCall = map(
     seq([
         alt([fieldGet, record, terminal]),
-        many(fnArgs, 1),
+        kplus(fnArgs),
     ]),
     spread(tagSeq(tags.FnCall)))
 
@@ -118,7 +117,7 @@ const dotArgs = seq([
 const dotFnCall = map(
     seq([
         alt([fnCall, fieldGet, record, terminal]),
-        many(dotArgs, 1),
+        kplus(dotArgs),
     ]),
     ([firstArg, seq]) => seq.reduce(
         (acc, [_, ident, restArgs]) =>

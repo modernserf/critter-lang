@@ -1,4 +1,4 @@
-const { id, cond, comp, flatten } = require('./util')
+const { id, cond, comp, flatten, spread } = require('./util')
 
 const ok = (value, nextInput) => ({ ok: true, value, nextInput })
 const err = (...error) => ({ ok: false, error })
@@ -10,6 +10,39 @@ const one = (f) => (input) =>
         : f(input[0])
             ? ok(input[0], input.slice(1))
             : err('no_match', input[0])
+
+const always = (value) => (input) => ok(value, input)
+const any = one(() => true)
+const never = (input) => err('never_matches')
+
+const not = (p) => (input) => cond(isOk,
+    () => err('expected_not', input[0]),
+    () => ok(null, input),
+)(p(input))
+
+const or = (p1, p2) => (input) => cond(isOk,
+    id,
+    () => p2(input)
+)(p1(input))
+
+const and = (p1, p2) => (input) => cond(isOk,
+    ({ value, nextInput }) =>
+        map(p2, (nextVal) => [value, nextVal])(nextInput),
+    id
+)(p1(input))
+
+const cons = (head, tail) => [head, ...tail]
+
+const _star = (p, state) =>
+    cond(isOk,
+        (res) => _star(p, pushState(state, res)),
+        () => state
+    )(p(state.nextInput))
+
+const star = (p) => (input) =>
+    _star(p, ok([], input))
+
+const kplus = (p) => map(and(p, star(p)), spread(cons))
 
 const eq = (value) => one((x) => value === x)
 const notEq = (value) => one((x) => value !== x)
@@ -23,38 +56,15 @@ const token = (type) => one((x) => type === x.type)
 const pushState = (prevState, {value, nextInput}) =>
     ok(prevState.value.concat([value]), nextInput)
 
-const seq = (ps) => (input) => {
-    let state = ok([], input)
-    for (const p of ps) {
-        const res = p(state.nextInput)
-        if (!res.ok) { return res }
-        state = pushState(state, res)
-    }
-    return state
-}
+const append = (x, y) => x.concat([y])
 
-const alt = (ps) => (input) => {
-    for (const p of ps) {
-        const res = p(input)
-        if (res.ok) { return res }
-    }
-    return err('no_alts')
-}
+const seq = (ps) =>
+    ps.reduce((l, r) =>
+        map(and(l, r), spread(append)),
+    always([]))
 
-const many = (p, min = 0, max = Infinity) => (input) => {
-    let state = ok([], input)
-    let i = 0
-    while (state.nextInput.length) {
-        if (i > max) { return err('over_max') }
-        const res = p(state.nextInput)
-        if (!res.ok) { break }
-        state = pushState(state, res)
-        i++
-    }
-    if (i < min) { return err('below_min') }
-
-    return state
-}
+const alt = (ps) =>
+    or(ps.reduce(or), () => err('no_alts'))
 
 const map = (p, f) => (input) =>
     cond(isOk,
@@ -71,7 +81,7 @@ const maybe = (p) => (input) =>
 const sepBy = (p, other) => map(
     seq([
         p,
-        many(map(
+        star(map(
             seq([other, p]),
             ([_, pVal]) => pVal
         )),
@@ -93,11 +103,9 @@ const done = (p) => comp(
     map(seq([p, eof]), ([x]) => x)
 )
 
-const lazy = (f, memo = null) => (input) => {
-    if (memo) { return memo(input) }
-    memo = f()
-    return memo(input)
-}
+const lazy = (f, memo = null) =>
+    (input) => // eslint-disable-line no-return-assign
+        memo ? memo(input) : (memo = f(), memo(input))
 
 const wrapWith = (p, l, r) => map(
     seq([l, p, r || l]),
@@ -105,11 +113,18 @@ const wrapWith = (p, l, r) => map(
 )
 
 module.exports = {
+    any,
+    always,
+    never,
+    not,
+    or,
+    and,
+    star,
+    kplus,
     token,
     seq,
     alt,
     map,
-    many,
     maybe,
     sepBy,
     maybeSepBy,

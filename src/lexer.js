@@ -1,4 +1,4 @@
-const { alt, seq, chars, notEq, many, map, one, maybe, done } = require('./parser-combinators')
+const { alt, seq, and, chars, notEq, star, kplus, map, one, maybe, done } = require('./parser-combinators')
 const { flatten, comp } = require('./util')
 
 const tag = (type) => (value) => ({ type, value })
@@ -6,16 +6,16 @@ const tag = (type) => (value) => ({ type, value })
 const join = (xs) => xs.join('')
 const oneRe = (regex) => one((x) => regex.test(x))
 
-const whitespace = many(oneRe(/\s/), 1)
+const whitespace = kplus(oneRe(/\s/))
 
-const comment = seq([chars(';'), map(many(notEq('\n')), join)])
+const comment = seq([chars(';'), map(star(notEq('\n')), join)])
 
 const hexNumber = map(
-    seq([chars('0x'), many(oneRe(/[0-9A-Fa-f]/), 1)]),
+    seq([chars('0x'), kplus(oneRe(/[0-9A-Fa-f]/))]),
     comp(join, flatten)
 )
 
-const digits = map(many(oneRe(/[0-9]/), 1), join)
+const digits = map(kplus(oneRe(/[0-9]/)), join)
 const decNumber = map(
     seq([
         maybe(chars('-')),
@@ -25,14 +25,14 @@ const decNumber = map(
     comp(join, flatten)
 )
 
-const ident = map(many(oneRe(/[^\s.:#,;@[\]{}()]/), 1), join)
+const ident = map(kplus(oneRe(/[^\s.:#,;@[\]{}()]/)), join)
 
-const tagString = seq([chars('#'), ident])
+const tagString = and(chars('#'), ident)
 const quote = chars('"')
 const quoteEsc = map(chars('\\"'), () => '"')
 const notQuote = notEq('"')
 const stringChars = map(
-    many(alt([quoteEsc, notQuote])),
+    star(alt([quoteEsc, notQuote])),
     join
 )
 const quotedString = seq([quote, stringChars, quote])
@@ -58,7 +58,7 @@ const token = alt([
     map(ident, tag('Ident')),
 ])
 
-const tokenSeq = many(token)
+const tokenSeq = star(token)
 
 const tokenize = comp(done(tokenSeq), Array.from)
 

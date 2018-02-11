@@ -2,6 +2,7 @@ const pipe = (fns) => (input) => fns.reduce((acc, f) => f(acc), input)
 const comp = (f, g) => (x) => f(g(x))
 const cond = (p, ifTrue, ifFalse) => (x) => p(x) ? ifTrue(x) : ifFalse(x)
 const id = (x) => x
+const spread = (f) => (xs) => f(...xs)
 
 const Either = {
     left: (x) => ['left', x],
@@ -41,4 +42,5 @@ module.exports = {
     tagConstructors,
     match,
     flatten,
+    spread,
 }
