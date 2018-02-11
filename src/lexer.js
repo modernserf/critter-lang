@@ -1,62 +1,64 @@
-const P = require('parsimmon')
+const { alt, seq, chars, notEq, many, map, one, flatten, comp, maybe, done } = require('./util')
 
 const tag = (type) => (value) => ({ type, value })
 
-const Lexer = P.createLanguage({
-    TokenSeq: (r) => r.Token.many(),
-    Token: (r) => P.alt(
-        r.FieldOp.map(tag('FieldOp')),
-        r.Assignment.map(tag('Assignment')),
-        r.Colon.map(tag('Colon')),
-        r.LBrk.map(tag('LBrk')),
-        r.RBrk.map(tag('RBrk')),
-        r.LCurly.map(tag('LCurly')),
-        r.RCurly.map(tag('RCurly')),
-        r.LParen.map(tag('LParen')),
-        r.RParen.map(tag('RParen')),
-        r.At.map(tag('At')),
-        r.Dot.map(tag('Dot')),
-        P.whitespace.map(tag('Whitespace')),
-        r.Comment.map(tag('Comment')),
-        r.TaggedString.map(tag('TaggedString')),
-        r.QuotedString.map(tag('QuotedString')),
-        r.HexNumber.map(tag('HexNumber')),
-        r.DecNumber.map(tag('DecNumber')),
-        r.Ident.map(tag('Ident'))
-    ),
-    Comment: (r) => P.seq(r.Semi, r.LineChar),
-    LineChar: () => P.regexp(/[^\n]+/),
+const join = (xs) => xs.join('')
+const oneRe = (regex) => one((x) => regex.test(x))
 
-    TaggedString: (r) => P.seq(r.Tag, r.Ident),
+const whitespace = many(oneRe(/\s/), 1)
 
-    QuotedString: (r) => P.seq(r.Quote, r.StringChars, r.Quote),
-    StringChars: (r) =>
-        P.alt(r.QuoteEscape, r.StringChar).many().tie(),
+const comment = seq([chars(';'), map(many(notEq('\n')), join)])
 
-    Quote: () => P.string('"'),
-    QuoteEscape: () => P.string('\\"').map(() => '"'),
-    StringChar: () => P.regexp(/[^"]/),
+const hexNumber = map(
+    seq([chars('0x'), many(oneRe(/[0-9A-Fa-f]/), 1)]),
+    comp(join, flatten)
+)
 
-    DecNumber: () => P.regexp(/-?[0-9]+(.[0-9]+)?/),
-    HexNumber: () => P.regexp(/0x[0-9A-Fa-f]+/),
+const digits = map(many(oneRe(/[0-9]/), 1), join)
+const decNumber = map(
+    seq([
+        maybe(chars('-')),
+        digits,
+        map(maybe(seq([chars('.'), digits])), flatten),
+    ]),
+    comp(join, flatten)
+)
 
-    Ident: () => P.regexp(/[^\s.:#,;@[\]{}()]+/),
+const ident = map(many(oneRe(/[^\s.:#,;@[\]{}()]/), 1), join)
 
-    FieldOp: () => P.string('::'),
-    Assignment: () => P.string(':='),
-    Colon: () => P.string(':'),
-    LBrk: () => P.string('['),
-    RBrk: () => P.string(']'),
-    LCurly: () => P.string('{'),
-    RCurly: () => P.string('}'),
-    LParen: () => P.string('('),
-    RParen: () => P.string(')'),
-    Tag: () => P.string('#'),
-    Dot: () => P.string('.'),
-    Semi: () => P.string(';'),
-    At: () => P.string('@'),
-})
+const tagString = seq([chars('#'), ident])
+const quote = chars('"')
+const quoteEsc = map(chars('\\"'), () => '"')
+const notQuote = notEq('"')
+const stringChars = map(
+    many(alt([quoteEsc, notQuote])),
+    join
+)
+const quotedString = seq([quote, stringChars, quote])
 
-const tokenize = (str) => Lexer.TokenSeq.tryParse(str)
+const token = alt([
+    map(chars('::'), tag('FieldOp')),
+    map(chars(':='), tag('Assignment')),
+    map(chars(':'), tag('Colon')),
+    map(chars('['), tag('LBrk')),
+    map(chars(']'), tag('RBrk')),
+    map(chars('{'), tag('LCurly')),
+    map(chars('}'), tag('RCurly')),
+    map(chars('('), tag('LParen')),
+    map(chars(')'), tag('RParen')),
+    map(chars('@'), tag('At')),
+    map(chars('.'), tag('Dot')),
+    map(whitespace, tag('Whitespace')),
+    map(comment, tag('Comment')),
+    map(hexNumber, tag('HexNumber')),
+    map(decNumber, tag('DecNumber')),
+    map(tagString, tag('TaggedString')),
+    map(quotedString, tag('QuotedString')),
+    map(ident, tag('Ident')),
+])
+
+const tokenSeq = many(token)
+
+const tokenize = (str) => done(tokenSeq)(Array.from(str))
 
 module.exports = { tokenize }

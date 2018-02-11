@@ -30,14 +30,25 @@ const tagConstructors = (defs) => defs.reduce((obj, [type, ...keys]) =>
 const match = (obj, onDefault) => (tag, index) =>
     obj[tag.type] ? obj[tag.type](tag, index) : onDefault(tag, index)
 
-const token = (type) => (input) => {
+// parser combinators
+
+const one = (f) => (input) => {
     if (!input.length) {
         return { ok: false, error: ['eof'] }
     }
-    return type === input[0].type
+    return f(input[0])
         ? { ok: true, value: input[0], nextInput: input.slice(1) }
-        : { ok: false, error: ['no_match', type, input[0]] }
+        : { ok: false, error: ['no_match', input[0]] }
 }
+
+const eq = (value) => one((x) => value === x)
+const notEq = (value) => one((x) => value !== x)
+
+const chars = (str) => str.length > 1
+    ? seq(Array.from(str).map(eq))
+    : eq(str)
+
+const token = (type) => one((x) => type === x.type)
 
 const seq = (ps) => (input) => {
     const state = { ok: true, value: [], nextInput: input }
@@ -130,6 +141,7 @@ const wrapWith = (p, l, r) => map(
 
 module.exports = {
     pipe,
+    comp,
     Either,
     tagConstructors,
     match,
@@ -145,4 +157,8 @@ module.exports = {
     lazy,
     wrapWith,
     spreadMaybe,
+    chars,
+    notEq,
+    one,
+    flatten,
 }
