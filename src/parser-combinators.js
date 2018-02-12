@@ -33,6 +33,9 @@ const and = (p1, p2) => (input) => cond(isOk,
 
 const cons = (head, tail) => [head, ...tail]
 
+const pushState = (prevState, {value, nextInput}) =>
+    ok(prevState.value.concat([value]), nextInput)
+
 const _star = (p, state) =>
     cond(isOk,
         (res) => _star(p, pushState(state, res)),
@@ -52,9 +55,6 @@ const chars = (str) => str.length > 1
     : eq(str)
 
 const token = (type) => one((x) => type === x.type)
-
-const pushState = (prevState, {value, nextInput}) =>
-    ok(prevState.value.concat([value]), nextInput)
 
 const append = (x, y) => x.concat([y])
 

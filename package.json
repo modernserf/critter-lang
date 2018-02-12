@@ -22,9 +22,8 @@
   },
   "scripts": {
     "test": "tape ./src/test.js | faucet",
-    "build-tokenizer": "pegjs --allowed-start-rules TokenList src/tokenizer.pegjs",
     "build-highlighter": "browserify src/highlighter.js -o docs/highlighter.js",
-    "build": "npm run build-tokenizer && npm run build-highlighter"
+    "build": "npm run build-highlighter"
   },
   "repository": {
     "type": "git",

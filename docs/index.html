@@ -20,20 +20,19 @@
     </p>
 
     <div data-critter-lang>
-        @import #dom
+        @import [::ready ::find ::render ::tag] := #dom
 
-        @let hello(name: name) := {
+        @let hello := (name: name){
             [#section [class: #main] [
                 [#h1 ["Hello, " name "!"]]
             ]]
         }
 
-        @do dom:ready({
-            @do dom:render(
-                dom:find(#body)
-                [hello [name: "World"]]
-            )
-        })
+        @await ready()
+
+        @do find(#body.tag).render(
+            [hello [name: "World"]]
+        )
     </div>
 </header>
 
@@ -148,7 +147,7 @@
         Functions can take named arguments. Named arguments must come after unnamed arguments. A function with all named arguments will fail when called infix.
     </p>
     <div data-critter-lang>
-        @let func := {(first second foo: foo-arg bar: bar-arg)
+        @let func := (first second foo: foo-arg bar: bar-arg){
             first.+(second).*(foo-arg)./(bar-arg)
         }
         ; can be called with
@@ -160,8 +159,8 @@
         There is a shorthand syntax for pattern-matching functions by their arguments.
     </p>
     <div data-critter-lang>
-        @let foo(x) := { +(x 2) }
-        @let foo(x y) := { +(x y) }
+        @case foo := (x){ +(x 2) }
+        @case foo := (x y){ +(x y) }
 
         foo(5)   ; evaluates to 7
         foo(5 1) ; evaluates to 6
@@ -183,8 +182,8 @@
         ; tagged variants &amp; pattern matching
         @let result := [#ok 123.45]
         @let matched := result.match([
-            {([#ok value]) value }
-            {(#nil)        0 }
+            ([#ok value]){ value }
+            (#nil){ 0 }
         ])
     </div>
 
@@ -251,7 +250,7 @@
         <code>try</code> keyword returns the error if the test fails, continues function if test succeeds
     </p>
     <div data-critter-lang>
-        @let fn(a b) := {
+        @let fn := (a b){
             @try a.<(3)
             @try b.isa(#number)
             b.+(a)

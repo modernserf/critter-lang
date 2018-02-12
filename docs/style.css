@@ -133,20 +133,15 @@ code {
    margin-bottom: 12px;
    white-space: pre-wrap;
 }
-.syntax-keyword {
-    font-weight: bold;
-}
-.syntax-hashtag,
-.syntax-string,
-.syntax-number {
+.syntax-HexNumber,
+.syntax-DecNumber,
+.syntax-TaggedString,
+.syntax-QuotedString {
     color: #fc0;
 }
-.syntax-field_name {
-    color: #f80;
-}
-.syntax-comment {
+.syntax-Comment {
     color: #0c0;
 }
-.syntax-identifier {
+.syntax-Ident {
     color: white;
 }
