@@ -1,31 +1,36 @@
-import test from 'ava'
-const { tags } = require('./parser')
-const { compile } = require('./compiler')
+import { tags } from './parser'
+import { compile } from './compiler'
 const {
     FieldGet, Record, FnExp, FnCall, Arg, NamedArg, Keyword,
     Number: Num, String: Str, Ident,
 } = tags
 
-test('number literals', (t) => {
-    t.is(compile(Num(123)), '123')
-    t.is(compile(Num(-0.2345)), '-0.2345')
+it('number literals', () => {
+    expect(compile(Num(123)))
+        .toEqual('123')
+    expect(compile(Num(-0.2345)))
+        .toEqual('-0.2345')
 })
 
-test('string literals', (t) => {
-    t.is(compile(Str('foo')), `"foo"`)
-    t.is(
-        compile(Str(`This "text" has escaped characters`)),
-        `"This \\"text\\" has escaped characters"`)
+it('string literals', () => {
+    expect(compile(Str('foo')))
+        .toEqual(`"foo"`)
+    expect(compile(Str(`This "text" has escaped characters`)))
+        .toEqual(`"This \\"text\\" has escaped characters"`)
 })
 
-test('identifier', (t) => {
-    t.is(compile(Ident('foobar')), 'foobar')
-    t.is(compile(Ident('++=>')), '_43_43_61_62')
-    t.is(compile(Ident('_43')), '_95_52_51')
-    t.is(compile(Ident('var')), '_var')
+it('identifier', () => {
+    expect(compile(Ident('foobar')))
+        .toEqual('foobar')
+    expect(compile(Ident('++=>')))
+        .toEqual('_43_43_61_62')
+    expect(compile(Ident('_43')))
+        .toEqual('_95_52_51')
+    expect(compile(Ident('var')))
+        .toEqual('_var')
 })
 
-test('record', (t) => {
+it('record', () => {
     const prog = Record([
         Arg(Ident('bar')),
         Arg(Str('baz')),
@@ -33,7 +38,7 @@ test('record', (t) => {
         NamedArg('snerf', Ident('snerf')),
     ])
 
-    t.is(compile(prog), [
+    expect(compile(prog)).toEqual([
         '{',
         '  0: bar,',
         `  1: "baz",`,
@@ -43,7 +48,7 @@ test('record', (t) => {
     ].join('\n'))
 })
 
-test('function call', (t) => {
+it('function call', () => {
     const prog = FnCall(Ident('foo'), [
         Arg(Ident('bar')),
         Arg(Str('baz')),
@@ -51,7 +56,7 @@ test('function call', (t) => {
         NamedArg('snerf', Ident('snerf')),
     ])
 
-    t.is(compile(prog), [
+    expect(compile(prog)).toEqual([
         `foo({`,
         `  0: bar,`,
         `  1: "baz",`,
@@ -61,18 +66,18 @@ test('function call', (t) => {
     ].join('\n'))
 })
 
-test('function expression no args', (t) => {
+it('function expression no args', () => {
     const prog = FnExp([], [
         Ident('x'),
     ])
-    t.is(compile(prog), [
+    expect(compile(prog)).toEqual([
         `() => {`,
         `  return x;`,
         `}`,
     ].join('\n'))
 })
 
-test('function expression with args', (t) => {
+it('function expression with args', () => {
     const prog = FnExp([
         Arg(Ident('x')),
     ], [
@@ -84,7 +89,7 @@ test('function expression with args', (t) => {
 
     // TODO: how will shadowing work? are the scope rules close enough
     // that it will work "automatically"?
-    t.is(compile(prog), [
+    expect(compile(prog)).toEqual([
         `({`,
         `  0: x`,
         `}) => {`,
@@ -96,39 +101,40 @@ test('function expression with args', (t) => {
     ].join('\n'))
 })
 
-test('field access', (t) => {
-    t.is(compile(FieldGet(Ident('foo'), 'bar')), [
-        `CRITTER.getFields(foo, "bar")`,
-    ].join('\n'))
+it('field access', () => {
+    expect(compile(FieldGet(Ident('foo'), 'bar')))
+        .toEqual([
+            `CRITTER.getFields(foo, "bar")`,
+        ].join('\n'))
 })
 
-test('bare keyword', (t) => {
+it('bare keyword', () => {
     const prog = Keyword(Ident('foo'), null, Ident('bar'))
-    t.throws(() => {
+    expect(() => {
         compile(prog)
-    })
+    }).toThrow()
 })
 
-test('single keyword', (t) => {
+it('single keyword', () => {
     const prog = FnExp([], [
         Keyword(Ident('foo'), null, Ident('bar')),
     ])
 
-    t.is(compile(prog), [
+    expect(compile(prog)).toEqual([
         `() => {`,
         `  return CRITTER.keyword(foo, bar, null);`,
         `}`,
     ].join('\n'))
 })
 
-test('sequence of keywords', (t) => {
+it('sequence of keywords', () => {
     const prog = FnExp([], [
         Keyword(Ident('foo'), null, Ident('bar')),
         Keyword(Ident('baz'), null, Ident('quux')),
         Ident('snerf'),
     ])
 
-    t.is(compile(prog), [
+    expect(compile(prog)).toEqual([
         `() => {`,
         `  return CRITTER.keyword(foo, bar, null, () => {`,
         `    return CRITTER.keyword(baz, quux, null, () => {`,
@@ -139,7 +145,7 @@ test('sequence of keywords', (t) => {
     ].join('\n'))
 })
 
-test('keyword assignments', (t) => {
+it('keyword assignments', () => {
     const prog = FnExp([], [
         Keyword(Ident('foo'), Ident('x'), Ident('bar')),
         FnCall(Ident('inc'), [
@@ -147,7 +153,7 @@ test('keyword assignments', (t) => {
         ]),
     ])
 
-    t.is(compile(prog), [
+    expect(compile(prog)).toEqual([
         `() => {`,
         `  return CRITTER.keyword(foo, bar, {`,
         `    0: "Ident",`,

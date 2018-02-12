@@ -239,8 +239,8 @@ const lazy = (f, memo = null) => new Parser((input, index) => {
 module.exports = { Parser, MemoParser, never, always, start, end, any, match, eq, alt, seq, all, some, plus, maybe, not, notOneOf, sepBy, sepBy1, wrapped, chars, altChars, range, digit, uppercase, lowercase, letter, whitespace, lazy }
 
 },{}],2:[function(require,module,exports){
-const { tokenize } = require('./lexer')
-const { flatten } = require('./util')
+import { tokenize } from './lexer'
+import { flatten } from './util'
 
 const join = (s) => Array.isArray(s) ? flatten(s).join('') : s
 
@@ -265,7 +265,7 @@ window.addEventListener('DOMContentLoaded', () => {
 
 },{"./lexer":3,"./util":4}],3:[function(require,module,exports){
 const P = require('./combinators')
-const { flatten } = require('./util')
+import { flatten } from './util'
 
 const tag = (type) => (value) => ({ type, value })
 

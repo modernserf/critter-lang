@@ -6,7 +6,7 @@ const err = (...errors) => ({ ok: false, errors })
 // parsers
 const _first = ([x]) => x
 const _withIndex = (match, _, __, index) => ({ match, index })
-class Parser {
+export class Parser {
     constructor (parseFn) {
         this._parseFn = parseFn
     }
@@ -51,7 +51,7 @@ class Parser {
     }
 }
 
-class MemoParser extends Parser {
+export class MemoParser extends Parser {
     constructor (parseFn) {
         super(parseFn)
         this._memo = new Map()
@@ -70,31 +70,31 @@ class MemoParser extends Parser {
 }
 
 // never matches
-const never = new Parser((_, index) => err('never_matches', index))
+export const never = new Parser((_, index) => err('never_matches', index))
 
 // always matches, returns same value, does not consume input
-const always = (value) => new Parser((_, index) => ok(value, index))
+export const always = (value) => new Parser((_, index) => ok(value, index))
 
 // matches the start of input (regex ^)
-const start = new Parser((_, index) =>
+export const start = new Parser((_, index) =>
     index === 0
         ? ok(null, index)
         : err('expected_start_of_input', index))
 // matches the end of input (regex $)
-const end = new Parser((input, index) =>
+export const end = new Parser((input, index) =>
     index === input.length
         ? ok(null, index)
         : err('expected_end_of_input', index))
 
 // matches any one token (regex .)
-const any = new Parser((input, index) =>
+export const any = new Parser((input, index) =>
     index >= input.length
         ? err('unexpected_end_of_input', index)
         : ok(input[index], index + 1)
 )
 
 // matches if input[index] exists && matchFn(input[index]) is truthy
-const match = (matchFn) => new MemoParser((input, index) =>
+export const match = (matchFn) => new MemoParser((input, index) =>
     index >= input.length
         ? err('unexpected_end_of_input', index)
         : matchFn(input[index])
@@ -102,13 +102,13 @@ const match = (matchFn) => new MemoParser((input, index) =>
             : err('no_match', input[index], index)
 )
 
-const eq = (value) =>
+export const eq = (value) =>
     match((x) => x === value)
         .mapError((_, val, index) => ['expected_value', value, val, index])
 
 // matches if any of ps matches (regex |)
 // TODO: concatenate with other "alt" parsers
-const alt = (...ps) => new MemoParser((input, index) => {
+export const alt = (...ps) => new MemoParser((input, index) => {
     for (const p of ps) {
         const res = p.parse(input, index)
         if (res.ok) { return res }
@@ -119,7 +119,7 @@ const alt = (...ps) => new MemoParser((input, index) => {
 // matches if sequence of ps match
 // TODO: concatenate with other "seq" parsers
 // TODO: check if sum of lengths is possible
-const seq = (...ps) => new MemoParser((input, index) => {
+export const seq = (...ps) => new MemoParser((input, index) => {
     const output = []
     for (const p of ps) {
         const res = p.parse(input, index)
@@ -132,7 +132,7 @@ const seq = (...ps) => new MemoParser((input, index) => {
 
 // matches sequence of p (regex *)
 // p must consume input
-const all = (p) => new MemoParser((input, index) => {
+export const all = (p) => new MemoParser((input, index) => {
     const output = []
     while (true) {
         const res = p.parse(input, index)
@@ -150,18 +150,18 @@ const all = (p) => new MemoParser((input, index) => {
 // matches at least one p (regex +)
 // p must consume input
 const _consSeq = ([h, t]) => [h].concat(t)
-const plus = (p) => seq(p, all(p))
+export const plus = (p) => seq(p, all(p))
     .map(_consSeq)
 
 // matches 0 or 1 p (regex ?)
 // yielding [] or [value]
 const _nothing = always([])
 const _just = (x) => [x]
-const maybe = (p) => alt(p.map(_just), _nothing)
+export const maybe = (p) => alt(p.map(_just), _nothing)
 
 // matches if p does not match
 // does not consume input
-const not = (p) => new Parser((input, index) =>
+export const not = (p) => new Parser((input, index) =>
     p.parse(input, index).ok
         ? err('should_not_match', index)
         : ok(null, index)
@@ -169,32 +169,32 @@ const not = (p) => new Parser((input, index) =>
 
 // non-greedy match sequence of p, followed by q (regex *?)
 // p must consume input
-const some = (p, q) => seq(
+export const some = (p, q) => seq(
     all(seq(not(q), p).map(_second)),
     q
 )
 
 // matches any one token that ps do not match (regex [^ ])
 const _second = ([_, x]) => x
-const notOneOf = (...ps) => seq(not(alt(...ps)), any).map(_second)
+export const notOneOf = (...ps) => seq(not(alt(...ps)), any).map(_second)
 
 // matches zero or more `content`, separated by `separator`
 // yields array of matches for `content`
 const _concatSeq = ([h, t]) => h.concat(t)
-const sepBy = (content, separator) => seq(
+export const sepBy = (content, separator) => seq(
     maybe(content),
     all(seq(separator, content).map(_second))
 ).map(_concatSeq)
 
 // as above, but matches 1 or more `content`
-const sepBy1 = (content, separator) => seq(
+export const sepBy1 = (content, separator) => seq(
     content,
     all(seq(separator, content))
 ).map(_consSeq)
 
 // matches `content` wrapped with left or left + right
 // yields match for content
-const wrapped = (content, left, right) =>
+export const wrapped = (content, left, right) =>
     seq(left, content, right || left).map(_second)
 
 // string-specific parsers
@@ -203,16 +203,16 @@ const _join = (xs) => xs.join('')
 const _matchChar = (ch) => match((x) => x === ch)
 
 // match a substring
-const chars = (str) => seq(
+export const chars = (str) => seq(
     ...Array.from(str).map(_matchChar)
 ).map(_join)
 // match a char within the string
-const altChars = (str) => alt(
+export const altChars = (str) => alt(
     ...Array.from(str).map(_matchChar)
 )
 
 // ASCII codes
-const range = (start, end) => {
+export const range = (start, end) => {
     const startCode = start.codePointAt(0)
     const endCode = end.codePointAt(0)
     return match((x) => {
@@ -222,17 +222,15 @@ const range = (start, end) => {
     })
 }
 
-const digit = range('0', '9')
-const uppercase = range('A', 'Z')
-const lowercase = range('a', 'z')
-const letter = alt(uppercase, lowercase)
-const whitespace = match((x) => /\s/.test(x))
+export const digit = range('0', '9')
+export const uppercase = range('A', 'Z')
+export const lowercase = range('a', 'z')
+export const letter = alt(uppercase, lowercase)
+export const whitespace = match((x) => /\s/.test(x))
 
 // helper for mutual recursion
-const lazy = (f, memo = null) => new Parser((input, index) => {
+export const lazy = (f, memo = null) => new Parser((input, index) => {
     if (memo) { return memo.parse(input, index) }
     memo = f()
     return memo.parse(input, index)
 })
-
-module.exports = { Parser, MemoParser, never, always, start, end, any, match, eq, alt, seq, all, some, plus, maybe, not, notOneOf, sepBy, sepBy1, wrapped, chars, altChars, range, digit, uppercase, lowercase, letter, whitespace, lazy }

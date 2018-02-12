@@ -1,5 +1,5 @@
-const P = require('./combinators')
-const { flatten } = require('./util')
+import * as P from './combinators'
+import { flatten } from './util'
 
 const tag = (type) => (value) => ({ type, value })
 
@@ -61,6 +61,4 @@ const token = P.alt(
 
 const tokenSeq = P.all(token)
 
-const tokenize = (str) => tokenSeq.parseAll(Array.from(str))
-
-module.exports = { tokenize }
+export const tokenize = (str) => tokenSeq.parseAll(Array.from(str))

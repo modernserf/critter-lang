@@ -1,11 +1,11 @@
-const { tokenize } = require('./lexer')
-const { tagConstructors, spread, flatten } = require('./util')
-const P = require('./combinators')
+import { tokenize } from './lexer'
+import { tagConstructors, spread, flatten } from './util'
+import * as P from './combinators'
 
 const tagSeq = (tagger) => (init, args) =>
     args.reduce((acc, item) => tagger(acc, item), init)
 
-const tags = tagConstructors([
+export const tags = tagConstructors([
     ['Program', 'body'],
     ['Number', 'value'],
     ['String', 'value'],
@@ -147,7 +147,5 @@ const body = doublePad(expression)
 
 const program = body.map(tags.Program)
 
-const expr = (str) => expression.parseAll(tokenize(str))
-const parse = (str) => program.parseAll(tokenize(str))
-
-module.exports = { parse, expr, tags }
+export const expr = (str) => expression.parseAll(tokenize(str))
+export const parse = (str) => program.parseAll(tokenize(str))

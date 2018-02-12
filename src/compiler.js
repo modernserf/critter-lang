@@ -1,6 +1,6 @@
-const generate = require('@babel/generator').default
-const { quote } = require('./quote')
-const { pipe, Either, tagConstructors, match } = require('./util')
+import generate from '@babel/generator'
+import { quote } from './quote'
+import { pipe, Either, tagConstructors, match } from './util'
 
 const JS = tagConstructors([
     ['Program', 'body'],
@@ -126,6 +126,4 @@ const escapeReservedWords = (name) => reservedJSWords.has(name)
 
 const ident = pipe([escapeChars, escapeReservedWords, JS.Identifier])
 
-const compile = pipe([transform, generate, (x) => x.code])
-
-module.exports = { compile }
+export const compile = pipe([transform, generate, (x) => x.code])

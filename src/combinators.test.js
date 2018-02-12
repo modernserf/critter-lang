@@ -1,130 +1,113 @@
-import test from 'ava'
-const P = require('./combinators')
+import * as P from './combinators'
 
-test('never', (t) => {
-    t.false(P.never.parse([]).ok)
+it('never', () => {
+    expect((P.never.parse([]).ok)).toBe(false)
 })
 
-test('always', (t) => {
-    t.is(P.always(10).parse([]).value, 10)
-    t.is(P.always(10).parse([1000, 50]).value, 10)
+it('always', () => {
+    expect(P.always(10).parse([]).value).toEqual(10)
+    expect(P.always(10).parse([1000, 50]).value).toEqual(10)
 })
 
-test('start', (t) => {
-    t.true(P.start.parse([]).ok)
-    t.true(P.start.parse([1, 2, 3, 4, 5]).ok)
-    t.false(P.start.parse([1, 2, 3, 4, 5], 1).ok)
+it('start', () => {
+    expect((P.start.parse([]).ok)).toBe(true)
+    expect((P.start.parse([1, 2, 3, 4, 5]).ok)).toBe(true)
+    expect((P.start.parse([1, 2, 3, 4, 5], 1).ok)).toBe(false)
 })
 
-test('end', (t) => {
-    t.true(P.end.parse([]).ok)
-    t.true(P.end.parse([1, 2, 3], 3).ok)
-    t.false(P.end.parse([1, 2, 3]).ok)
+it('end', () => {
+    expect((P.end.parse([]).ok)).toBe(true)
+    expect((P.end.parse([1, 2, 3], 3).ok)).toBe(true)
+    expect((P.end.parse([1, 2, 3]).ok)).toBe(false)
 })
 
-test('any', (t) => {
-    t.true(P.any.parse([1]).ok)
-    t.true(P.any.parse(['foo']).ok)
-    t.false(P.any.parse([]).ok)
+it('any', () => {
+    expect((P.any.parse([1]).ok)).toBe(true)
+    expect((P.any.parse(['foo']).ok)).toBe(true)
+    expect((P.any.parse([]).ok)).toBe(false)
 })
 
-test('match', (t) => {
+it('match', () => {
     const p = P.match((x) => x > 10)
-    t.deepEqual(
-        p.parse([50]),
-        { ok: true, value: 50, nextIndex: 1 }
-    )
-    t.false(p.parse([5]).ok)
+    expect(p.parse([50]))
+        .toEqual({ ok: true, value: 50, nextIndex: 1 })
+    expect((p.parse([5]).ok)).toBe(false)
 })
 
-test('eq', (t) => {
+it('eq', () => {
     const p = P.eq('foo')
-    t.true(p.parse(['foo', 'bar']).ok)
-    t.false(p.parse(['baz']).ok)
+    expect((p.parse(['foo', 'bar']).ok)).toBe(true)
+    expect((p.parse(['baz']).ok)).toBe(false)
 })
 
-test('alt', (t) => {
+it('alt', () => {
     const p = P.alt(P.eq('foo'), P.eq('bar'))
-    t.true(p.parse(['foo', 'bar']).ok)
-    t.true(p.parse(['bar', 'foo']).ok)
-    t.false(p.parse(['baz']).ok)
+    expect((p.parse(['foo', 'bar']).ok)).toBe(true)
+    expect((p.parse(['bar', 'foo']).ok)).toBe(true)
+    expect((p.parse(['baz']).ok)).toBe(false)
 })
 
-test('seq', (t) => {
+it('seq', () => {
     const p = P.seq(P.eq('foo'), P.eq('bar'))
-    t.true(p.parse(['foo', 'bar']).ok)
-    t.false(p.parse(['bar', 'foo']).ok)
-    t.false(p.parse(['foo']).ok)
+    expect((p.parse(['foo', 'bar']).ok)).toBe(true)
+    expect((p.parse(['bar', 'foo']).ok)).toBe(false)
+    expect((p.parse(['foo']).ok)).toBe(false)
 })
 
-test('all', (t) => {
+it('all', () => {
     const p = P.all(P.eq('foo'))
-    t.deepEqual(
-        p.parse(['foo', 'foo', 'bar']),
-        { ok: true, value: ['foo', 'foo'], nextIndex: 2 }
-    )
-    t.deepEqual(
-        p.parse(['bar', 'foo']),
-        { ok: true, value: [], nextIndex: 0 }
-    )
+    expect(p.parse(['foo', 'foo', 'bar']))
+        .toEqual({ ok: true, value: ['foo', 'foo'], nextIndex: 2 })
+    expect(p.parse(['bar', 'foo']))
+        .toEqual({ ok: true, value: [], nextIndex: 0 })
 })
 
-test('plus', (t) => {
+it('plus', () => {
     const p = P.plus(P.eq('foo'))
-    t.deepEqual(
-        p.parse(['foo', 'foo', 'bar']),
-        { ok: true, value: ['foo', 'foo'], nextIndex: 2 }
-    )
-    t.false(p.parse(['bar', 'foo']).ok)
+    expect(p.parse(['foo', 'foo', 'bar']))
+        .toEqual({ ok: true, value: ['foo', 'foo'], nextIndex: 2 })
+    expect((p.parse(['bar', 'foo']).ok)).toBe(false)
 })
 
-test('maybe', (t) => {
+it('maybe', () => {
     const p = P.maybe(P.eq('foo'))
-    t.deepEqual(
-        p.parse(['foo', 'bar']),
-        { ok: true, value: ['foo'], nextIndex: 1 }
-    )
-    t.deepEqual(
-        p.parse(['bar', 'foo']),
-        { ok: true, value: [], nextIndex: 0 }
-    )
+    expect(p.parse(['foo', 'bar']))
+        .toEqual({ ok: true, value: ['foo'], nextIndex: 1 })
+    expect(p.parse(['bar', 'foo']))
+        .toEqual({ ok: true, value: [], nextIndex: 0 })
 })
 
-test('not', (t) => {
+it('not', () => {
     const p = P.not(P.eq('foo'))
-    t.false(p.parse(['foo', 'bar']).ok)
-    t.deepEqual(
-        p.parse(['bar', 'foo']),
-        { ok: true, value: null, nextIndex: 0 }
-    )
+    expect((p.parse(['foo', 'bar']).ok)).toBe(false)
+    expect(p.parse(['bar', 'foo']))
+        .toEqual({ ok: true, value: null, nextIndex: 0 })
 })
 
-test('some', (t) => {
+it('some', () => {
     const p = P.some(P.any, P.eq('foo'))
-    t.deepEqual(
-        p.parse(['bar', 'foo', 'bar']),
-        { ok: true, value: [['bar'], 'foo'], nextIndex: 2 }
-    )
+    expect(p.parse(['bar', 'foo', 'bar']))
+        .toEqual({ ok: true, value: [['bar'], 'foo'], nextIndex: 2 })
 })
 
-test('chars', (t) => {
+it('chars', () => {
     const p = P.chars('foo')
-    t.true(p.parse(Array.from('foobar')).ok)
-    t.false(p.parse(Array.from('FOO')).ok)
+    expect((p.parse(Array.from('foobar')).ok)).toBe(true)
+    expect((p.parse(Array.from('FOO')).ok)).toBe(false)
 })
 
-test('altChars', (t) => {
+it('altChars', () => {
     const p = P.altChars('abcde')
-    t.true(p.parse(['a']).ok)
-    t.true(p.parse(['e']).ok)
-    t.false(p.parse([]).ok)
-    t.false(p.parse(['A']).ok)
+    expect((p.parse(['a']).ok)).toBe(true)
+    expect((p.parse(['e']).ok)).toBe(true)
+    expect((p.parse([]).ok)).toBe(false)
+    expect((p.parse(['A']).ok)).toBe(false)
 })
 
-test('range', (t) => {
+it('range', () => {
     const p = P.range('1', '5')
-    t.true(p.parse(['1']).ok)
-    t.true(p.parse(['3']).ok)
-    t.true(p.parse(['5']).ok)
-    t.false(p.parse(['8']).ok)
+    expect((p.parse(['1']).ok)).toBe(true)
+    expect((p.parse(['3']).ok)).toBe(true)
+    expect((p.parse(['5']).ok)).toBe(true)
+    expect((p.parse(['8']).ok)).toBe(false)
 })

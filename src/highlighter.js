@@ -1,5 +1,5 @@
-const { tokenize } = require('./lexer')
-const { flatten } = require('./util')
+import { tokenize } from './lexer'
+import { flatten } from './util'
 
 const join = (s) => Array.isArray(s) ? flatten(s).join('') : s
 

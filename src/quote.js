@@ -1,5 +1,5 @@
-const { tags } = require('./parser')
-const { match } = require('./util')
+import { tags } from './parser'
+import { match } from './util'
 
 const record = (args) =>
     tags.Record(args.map((arg) => tags.Arg(arg)))
@@ -16,7 +16,7 @@ const quoteArgs = (args) =>
         : ({ type, value: quote(value) })
     ))
 
-const quote = match({
+export const quote = match({
     Number: (token) => tagged(token, tags.Number(token.value)),
     String: (token) => tagged(token, tags.String(token.value)),
     Ident: (token) => tagged(token, tags.String(token.value)),
@@ -38,5 +38,3 @@ const quote = match({
 }, (token) => {
     throw new Error(`not implemented: ${token.type} `)
 })
-
-module.exports = { quote }
