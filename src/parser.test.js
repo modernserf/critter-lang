@@ -1,4 +1,4 @@
-const test = require('tape')
+import test from 'ava'
 const { expr, tags } = require('./parser')
 const {
     FieldGet, Record, FnExp, FnCall, Arg, NamedArg, Keyword,
@@ -6,63 +6,58 @@ const {
 } = tags
 
 test('parses a number', (t) => {
-    t.deepEquals(
+    t.deepEqual(
         expr('123'),
         Num(123)
     )
-    t.deepEquals(
+    t.deepEqual(
         expr('-123.45'),
         Num(-123.45)
     )
-    t.deepEquals(
+    t.deepEqual(
         expr('0xCAFEBABE'),
         Num(0xCAFEBABE)
     )
-    t.end()
 })
 
 test('parses a quoted string', (t) => {
-    t.deepEquals(
+    t.deepEqual(
         expr('"foo bar baz"'),
         Str('foo bar baz')
     )
-    t.deepEquals(
+    t.deepEqual(
         expr('"foo bar \\"quoted\\" baz"'),
         Str('foo bar "quoted" baz')
     )
-    t.end()
 })
 
 test('parses a tagged string', (t) => {
-    t.deepEquals(
+    t.deepEqual(
         expr('#foo'),
         Str('foo')
     )
-    t.end()
 })
 
 test('parses an identifier', (t) => {
-    t.deepEquals(
+    t.deepEqual(
         expr('foo'),
         Ident('foo')
     )
-    t.deepEquals(
+    t.deepEqual(
         expr('++=>'),
         Ident('++=>')
     )
 
-    t.equals(expr('foo bar'), null)
-
-    t.end()
+    t.is(expr('foo bar'), null)
 })
 
 test('parses a record', (t) => {
-    t.deepEquals(
+    t.deepEqual(
         expr('[]'),
         Record([])
     )
 
-    t.deepEquals(
+    t.deepEqual(
         expr('[bar ["baz"] 123.45]'),
         Record([
             Arg(Ident('bar')),
@@ -71,7 +66,7 @@ test('parses a record', (t) => {
         ])
     )
 
-    t.deepEquals(
+    t.deepEqual(
         expr('[bar "baz" quux: 123.45 snerf: snerf]'),
         Record([
             Arg(Ident('bar')),
@@ -80,11 +75,10 @@ test('parses a record', (t) => {
             NamedArg('snerf', Ident('snerf')),
         ])
     )
-    t.end()
 })
 
 test('field access', (t) => {
-    t.deepEquals(
+    t.deepEqual(
         expr('foo::bar::baz::0'),
         FieldGet(
             FieldGet(
@@ -92,16 +86,15 @@ test('field access', (t) => {
                 'baz'),
             0)
     )
-    t.end()
 })
 
 test('parses a fn call', (t) => {
-    t.deepEquals(
+    t.deepEqual(
         expr('foo()'),
         FnCall(Ident('foo'), [])
     )
 
-    t.deepEquals(
+    t.deepEqual(
         expr('foo(bar "baz" 123.45)'),
         FnCall(Ident('foo'), [
             Arg(Ident('bar')),
@@ -110,7 +103,7 @@ test('parses a fn call', (t) => {
         ])
     )
 
-    t.deepEquals(
+    t.deepEqual(
         expr('foo(bar "baz" quux: 123.45 snerf: snerf)'),
         FnCall(Ident('foo'), [
             Arg(Ident('bar')),
@@ -119,31 +112,28 @@ test('parses a fn call', (t) => {
             NamedArg('snerf', Ident('snerf')),
         ])
     )
-    t.end()
 })
 
 test('function call sequence', (t) => {
-    t.deepEquals(
+    t.deepEqual(
         expr('foo()()'),
         FnCall(
             FnCall(Ident('foo'), []),
             [])
     )
-    t.end()
 })
 
 test('function definition, no args', (t) => {
-    t.deepEquals(
+    t.deepEqual(
         expr(`{ x }`),
         FnExp([], [
             Ident('x'),
         ])
     )
-    t.end()
 })
 
 test('function definition, with args', (t) => {
-    t.deepEquals(
+    t.deepEqual(
         expr(`(x foo: y){ [x y] }`),
         FnExp([
             Arg(Ident('x')),
@@ -155,11 +145,10 @@ test('function definition, with args', (t) => {
             ]),
         ])
     )
-    t.end()
 })
 
 test('function definition, punned named arg', (t) => {
-    t.deepEquals(
+    t.deepEqual(
         expr(`(x ::foo){ [x foo] }`),
         FnExp([
             Arg(Ident('x')),
@@ -171,14 +160,13 @@ test('function definition, punned named arg', (t) => {
             ]),
         ])
     )
-    t.end()
 })
 
-test.skip('destructuring in function args')
+test.todo('destructuring in function args')
 // (x [y foo: z]){ bar(x y z) }
 
 test('dot functions', (t) => {
-    t.deepEquals(
+    t.deepEqual(
         expr(`foo.bar(baz).quux`),
         FnCall(Ident('quux'), [
             Arg(FnCall(Ident('bar'), [
@@ -187,20 +175,18 @@ test('dot functions', (t) => {
             ])),
         ])
     )
-    t.end()
 })
 
 test('keywords', (t) => {
-    t.deepEquals(
+    t.deepEqual(
         expr('@foo bar(baz)'),
         Keyword(Ident('foo'), null,
             FnCall(Ident('bar'), [Arg(Ident('baz'))]))
     )
-    t.end()
 })
 
 test('keyword assignment', (t) => {
-    t.deepEquals(
+    t.deepEqual(
         expr('@foo(quux) x := bar(baz)'),
         Keyword(
             FnCall(Ident('foo'), [Arg(Ident('quux'))]),
@@ -209,11 +195,10 @@ test('keyword assignment', (t) => {
                 Arg(Ident('baz')),
             ]))
     )
-    t.end()
 })
 
 test('precedence', (t) => {
-    t.deepEquals(
+    t.deepEqual(
         expr('@foo::bar(baz).quux::snerf() x := xyzzy()'),
         Keyword(
             FnCall(FieldGet(Ident('quux'), 'snerf'), [
@@ -225,5 +210,4 @@ test('precedence', (t) => {
             FnCall(Ident('xyzzy'), [])
         )
     )
-    t.end()
 })

@@ -1,4 +1,4 @@
-const test = require('tape')
+import test from 'ava'
 const { tags } = require('./parser')
 const { compile } = require('./compiler')
 const {
@@ -7,28 +7,22 @@ const {
 } = tags
 
 test('number literals', (t) => {
-    t.equals(compile(Num(123)), '123')
-    t.equals(compile(Num(-0.2345)), '-0.2345')
-
-    t.end()
+    t.is(compile(Num(123)), '123')
+    t.is(compile(Num(-0.2345)), '-0.2345')
 })
 
 test('string literals', (t) => {
-    t.equals(compile(Str('foo')), `"foo"`)
-    t.equals(
+    t.is(compile(Str('foo')), `"foo"`)
+    t.is(
         compile(Str(`This "text" has escaped characters`)),
         `"This \\"text\\" has escaped characters"`)
-
-    t.end()
 })
 
 test('identifier', (t) => {
-    t.equals(compile(Ident('foobar')), 'foobar')
-    t.equals(compile(Ident('++=>')), '_43_43_61_62')
-    t.equals(compile(Ident('_43')), '_95_52_51')
-    t.equals(compile(Ident('var')), '_var')
-
-    t.end()
+    t.is(compile(Ident('foobar')), 'foobar')
+    t.is(compile(Ident('++=>')), '_43_43_61_62')
+    t.is(compile(Ident('_43')), '_95_52_51')
+    t.is(compile(Ident('var')), '_var')
 })
 
 test('record', (t) => {
@@ -39,7 +33,7 @@ test('record', (t) => {
         NamedArg('snerf', Ident('snerf')),
     ])
 
-    t.equals(compile(prog), [
+    t.is(compile(prog), [
         '{',
         '  0: bar,',
         `  1: "baz",`,
@@ -47,7 +41,6 @@ test('record', (t) => {
         `  "snerf": snerf`,
         '}',
     ].join('\n'))
-    t.end()
 })
 
 test('function call', (t) => {
@@ -58,7 +51,7 @@ test('function call', (t) => {
         NamedArg('snerf', Ident('snerf')),
     ])
 
-    t.equals(compile(prog), [
+    t.is(compile(prog), [
         `foo({`,
         `  0: bar,`,
         `  1: "baz",`,
@@ -66,20 +59,17 @@ test('function call', (t) => {
         `  "snerf": snerf`,
         `})`,
     ].join('\n'))
-
-    t.end()
 })
 
 test('function expression no args', (t) => {
     const prog = FnExp([], [
         Ident('x'),
     ])
-    t.equals(compile(prog), [
+    t.is(compile(prog), [
         `() => {`,
         `  return x;`,
         `}`,
     ].join('\n'))
-    t.end()
 })
 
 test('function expression with args', (t) => {
@@ -94,7 +84,7 @@ test('function expression with args', (t) => {
 
     // TODO: how will shadowing work? are the scope rules close enough
     // that it will work "automatically"?
-    t.equals(compile(prog), [
+    t.is(compile(prog), [
         `({`,
         `  0: x`,
         `}) => {`,
@@ -104,14 +94,12 @@ test('function expression with args', (t) => {
         `  });`,
         `}`,
     ].join('\n'))
-    t.end()
 })
 
 test('field access', (t) => {
-    t.equals(compile(FieldGet(Ident('foo'), 'bar')), [
+    t.is(compile(FieldGet(Ident('foo'), 'bar')), [
         `CRITTER.getFields(foo, "bar")`,
     ].join('\n'))
-    t.end()
 })
 
 test('bare keyword', (t) => {
@@ -119,7 +107,6 @@ test('bare keyword', (t) => {
     t.throws(() => {
         compile(prog)
     })
-    t.end()
 })
 
 test('single keyword', (t) => {
@@ -127,12 +114,11 @@ test('single keyword', (t) => {
         Keyword(Ident('foo'), null, Ident('bar')),
     ])
 
-    t.equals(compile(prog), [
+    t.is(compile(prog), [
         `() => {`,
         `  return CRITTER.keyword(foo, bar, null);`,
         `}`,
     ].join('\n'))
-    t.end()
 })
 
 test('sequence of keywords', (t) => {
@@ -142,7 +128,7 @@ test('sequence of keywords', (t) => {
         Ident('snerf'),
     ])
 
-    t.equals(compile(prog), [
+    t.is(compile(prog), [
         `() => {`,
         `  return CRITTER.keyword(foo, bar, null, () => {`,
         `    return CRITTER.keyword(baz, quux, null, () => {`,
@@ -151,7 +137,6 @@ test('sequence of keywords', (t) => {
         `  });`,
         `}`,
     ].join('\n'))
-    t.end()
 })
 
 test('keyword assignments', (t) => {
@@ -162,7 +147,7 @@ test('keyword assignments', (t) => {
         ]),
     ])
 
-    t.equals(compile(prog), [
+    t.is(compile(prog), [
         `() => {`,
         `  return CRITTER.keyword(foo, bar, {`,
         `    0: "Ident",`,
@@ -174,5 +159,4 @@ test('keyword assignments', (t) => {
         `  });`,
         `}`,
     ].join('\n'))
-    t.end()
 })

@@ -1,53 +1,46 @@
-const test = require('tape')
+import test from 'ava'
 const P = require('./combinators')
 
 test('never', (t) => {
     t.false(P.never.parse([]).ok)
-    t.end()
 })
 
 test('always', (t) => {
-    t.equals(P.always(10).parse([]).value, 10)
-    t.equals(P.always(10).parse([1000, 50]).value, 10)
-    t.end()
+    t.is(P.always(10).parse([]).value, 10)
+    t.is(P.always(10).parse([1000, 50]).value, 10)
 })
 
 test('start', (t) => {
     t.true(P.start.parse([]).ok)
     t.true(P.start.parse([1, 2, 3, 4, 5]).ok)
     t.false(P.start.parse([1, 2, 3, 4, 5], 1).ok)
-    t.end()
 })
 
 test('end', (t) => {
     t.true(P.end.parse([]).ok)
     t.true(P.end.parse([1, 2, 3], 3).ok)
     t.false(P.end.parse([1, 2, 3]).ok)
-    t.end()
 })
 
 test('any', (t) => {
     t.true(P.any.parse([1]).ok)
     t.true(P.any.parse(['foo']).ok)
     t.false(P.any.parse([]).ok)
-    t.end()
 })
 
 test('match', (t) => {
     const p = P.match((x) => x > 10)
-    t.deepEquals(
+    t.deepEqual(
         p.parse([50]),
         { ok: true, value: 50, nextIndex: 1 }
     )
     t.false(p.parse([5]).ok)
-    t.end()
 })
 
 test('eq', (t) => {
     const p = P.eq('foo')
     t.true(p.parse(['foo', 'bar']).ok)
     t.false(p.parse(['baz']).ok)
-    t.end()
 })
 
 test('alt', (t) => {
@@ -55,7 +48,6 @@ test('alt', (t) => {
     t.true(p.parse(['foo', 'bar']).ok)
     t.true(p.parse(['bar', 'foo']).ok)
     t.false(p.parse(['baz']).ok)
-    t.end()
 })
 
 test('seq', (t) => {
@@ -63,69 +55,62 @@ test('seq', (t) => {
     t.true(p.parse(['foo', 'bar']).ok)
     t.false(p.parse(['bar', 'foo']).ok)
     t.false(p.parse(['foo']).ok)
-    t.end()
 })
 
 test('all', (t) => {
     const p = P.all(P.eq('foo'))
-    t.deepEquals(
+    t.deepEqual(
         p.parse(['foo', 'foo', 'bar']),
         { ok: true, value: ['foo', 'foo'], nextIndex: 2 }
     )
-    t.deepEquals(
+    t.deepEqual(
         p.parse(['bar', 'foo']),
         { ok: true, value: [], nextIndex: 0 }
     )
-    t.end()
 })
 
 test('plus', (t) => {
     const p = P.plus(P.eq('foo'))
-    t.deepEquals(
+    t.deepEqual(
         p.parse(['foo', 'foo', 'bar']),
         { ok: true, value: ['foo', 'foo'], nextIndex: 2 }
     )
     t.false(p.parse(['bar', 'foo']).ok)
-    t.end()
 })
 
 test('maybe', (t) => {
     const p = P.maybe(P.eq('foo'))
-    t.deepEquals(
+    t.deepEqual(
         p.parse(['foo', 'bar']),
         { ok: true, value: ['foo'], nextIndex: 1 }
     )
-    t.deepEquals(
+    t.deepEqual(
         p.parse(['bar', 'foo']),
         { ok: true, value: [], nextIndex: 0 }
     )
-    t.end()
 })
 
 test('not', (t) => {
     const p = P.not(P.eq('foo'))
     t.false(p.parse(['foo', 'bar']).ok)
-    t.deepEquals(
+    t.deepEqual(
         p.parse(['bar', 'foo']),
         { ok: true, value: null, nextIndex: 0 }
     )
-    t.end()
 })
 
 test('some', (t) => {
     const p = P.some(P.any, P.eq('foo'))
-    t.deepEquals(
+    t.deepEqual(
         p.parse(['bar', 'foo', 'bar']),
         { ok: true, value: [['bar'], 'foo'], nextIndex: 2 }
     )
-    t.end()
 })
 
 test('chars', (t) => {
     const p = P.chars('foo')
     t.true(p.parse(Array.from('foobar')).ok)
     t.false(p.parse(Array.from('FOO')).ok)
-    t.end()
 })
 
 test('altChars', (t) => {
@@ -134,7 +119,6 @@ test('altChars', (t) => {
     t.true(p.parse(['e']).ok)
     t.false(p.parse([]).ok)
     t.false(p.parse(['A']).ok)
-    t.end()
 })
 
 test('range', (t) => {
@@ -143,5 +127,4 @@ test('range', (t) => {
     t.true(p.parse(['3']).ok)
     t.true(p.parse(['5']).ok)
     t.false(p.parse(['8']).ok)
-    t.end()
 })

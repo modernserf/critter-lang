@@ -1,5 +1,5 @@
-const fs = require('fs')
-const test = require('tape')
+import fs from 'fs'
+import test from 'ava'
 const { parse } = require('./parser')
 const { compile } = require('./compiler')
 const runtimeText = fs.readFileSync('./src/runtime.js')
@@ -9,8 +9,7 @@ const compose = (f, g) => (x) => f(g(x))
 const transpile = compose(compile, parse)
 
 test('number literals', (t) => {
-    t.equals(transpile('123'), '123')
-    t.end()
+    t.is(transpile('123'), '123')
 })
 
 test('hello world', (t) => {
@@ -37,9 +36,7 @@ test('hello world', (t) => {
         '\n;' +
         transpile(program)
 
-    console.log(jsOutput)
+    eval(jsOutput) // eslint-disable-line no-eval
 
-    eval(jsOutput)
-
-    t.end()
+    t.pass()
 })
