@@ -13,7 +13,6 @@
     "babel-core": "^6.26.0",
     "babel-jest": "^22.2.2",
     "babel-preset-env": "^1.6.1",
-    "browserify": "^14.4.0",
     "eslint": "^4.17.0",
     "eslint-config-standard": "^11.0.0-beta.0",
     "eslint-plugin-import": "^2.8.0",
@@ -27,7 +26,7 @@
   },
   "scripts": {
     "test": "jest",
-    "build-highlighter": "browserify src/highlighter.js -o docs/highlighter.js",
+    "build-highlighter": "rollup src/highlighter.js --o docs/highlighter.js --f iife",
     "build": "npm run build-highlighter"
   },
   "repository": {
