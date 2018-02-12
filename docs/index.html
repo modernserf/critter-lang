@@ -128,7 +128,7 @@
         Functions are defined with curly braces.
     </p>
     <div data-critter-lang>
-        @let fn := {(x) +(x 2)}
+        @let fn := (x){ +(x 2) }
     </div>
 
     <p>
@@ -178,6 +178,8 @@
         ; named fields
         @let p := [x: 100 y: 200]
         @let [x: x y: y] := p
+        ; field punning
+        @let [::x ::y] := p
 
         ; tagged variants &amp; pattern matching
         @let result := [#ok 123.45]
@@ -230,8 +232,8 @@
 
         [#ok a].and([#ok b]) ; [#ok b]
         [#ok a].or([#ok b]) ; [#ok a]
-        [#ok 3].then({(a) +(a 1) }) ; [#ok 4]
-        #nil.then({(a) +(a 1) }).else({(_) 5 }) ; [#ok 5]
+        [#ok 3].then((a){ +(a 1) }) ; [#ok 4]
+        #nil.then((a){ +(a 1) }).else({ 5 }) ; [#ok 5]
     </div>
 </section>
 

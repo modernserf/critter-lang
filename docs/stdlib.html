@@ -100,14 +100,14 @@
         let [a b foo: c] := [1 2 foo: 3]
 
         ; static field access
-        [foo: 1 bar: 2]:foo := 1
+        [foo: 1 bar: 2]::foo := 1
 
         ; crashes
-        [foo: 1 bar: 2]:baz
+        [foo: 1 bar: 2]::baz
 
         ; dynamic field access
         [foo: 1 bar: 2].get(#foo) := [:ok 1]
-        [foo: 1 bar: 2].get(#baz) := [:error :nil]
+        [foo: 1 bar: 2].get(#baz) := [:error :key-error]
 
 
     </div>
@@ -131,7 +131,7 @@
                     [$id [#c] $c]])
 
         ; filters
-        foo.filter({(a: a) >(a 1) })
+        foo.filter((a: a){ >(a 1) })
 
         ; using call shorthand
         foo.filter(..get(#a).>(1))
@@ -187,9 +187,9 @@
 
     <div data-critter-lang>
         @let foo := { 3 }                       ; function takes no args, returns 3
-        @let bar := {(x) +(x 1) }               ; function takes arg x, returns x + 1
-        @let baz := {(x y kw: z) x.+(y).-(z) }  ; keyword arguments
-        {(x y ::z) x.+(y).-(z)}                 ; keyword shortand, as in destructuring
+        @let bar := (x){ +(x 1) }               ; function takes arg x, returns x + 1
+        @let baz := (x y kw: z){ x.+(y).-(z) }  ; keyword arguments
+        (x y ::z){ x.+(y).-(z)}                 ; keyword shortand, as in destructuring
 
         foo()       ; call foo with no arguments
         bar(value)  ; call bar with value
