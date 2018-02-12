@@ -1,65 +1,66 @@
-const { alt, seq, and, chars, notEq, star, kplus, map, one, maybe, done } = require('./parser-combinators')
-const { flatten, comp } = require('./util')
+const P = require('./combinators')
+const { flatten } = require('./util')
 
 const tag = (type) => (value) => ({ type, value })
 
 const join = (xs) => xs.join('')
-const oneRe = (regex) => one((x) => regex.test(x))
 
-const whitespace = kplus(oneRe(/\s/))
+const whitespace = P.plus(P.whitespace)
 
-const comment = seq([chars(';'), map(star(notEq('\n')), join)])
-
-const hexNumber = map(
-    seq([chars('0x'), kplus(oneRe(/[0-9A-Fa-f]/))]),
-    comp(join, flatten)
+const comment = P.seq(
+    P.chars(';'),
+    P.all(P.notOneOf(P.chars(''))).map(join)
 )
 
-const digits = map(kplus(oneRe(/[0-9]/)), join)
-const decNumber = map(
-    seq([
-        maybe(chars('-')),
-        digits,
-        map(maybe(seq([chars('.'), digits])), flatten),
-    ]),
-    comp(join, flatten)
+const hexNumber = P.seq(
+    P.chars('0x'),
+    P.plus(P.alt(P.digit, P.range('A', 'F'), P.range('a', 'f'))).map(join)
+).map(join)
+
+const digits = P.plus(P.digit).map(join)
+const decNumber = P.seq(
+    P.maybe(P.chars('-')),
+    digits,
+    P.maybe(P.seq(P.chars('.'), digits)).map(flatten)
+).map(flatten)
+    .map(join)
+
+const ident = P.plus(P.notOneOf(
+    P.whitespace,
+    P.altChars('.:#,;@[]{}()]"')
+)).map(join)
+
+const tagString = P.seq(P.chars('#'), ident)
+
+const quote = P.chars('"')
+const quoteEsc = P.chars('\\"').map(() => '"')
+const notQuote = P.notOneOf(quote)
+const stringChars = P.all(P.alt(quoteEsc, notQuote)).map(join)
+const quotedString = P.seq(quote, stringChars, quote)
+
+const token = P.alt(
+    P.chars('::').map(tag('FieldOp')),
+    P.chars(':=').map(tag('Assignment')),
+    P.chars(':').map(tag('Colon')),
+    P.chars('[').map(tag('LBrk')),
+    P.chars(']').map(tag('RBrk')),
+    P.chars('{').map(tag('LCurly')),
+    P.chars('}').map(tag('RCurly')),
+    P.chars('(').map(tag('LParen')),
+    P.chars(')').map(tag('RParen')),
+    P.chars('@').map(tag('At')),
+    P.chars('.').map(tag('Dot')),
+    whitespace.map(tag('Whitespace')),
+    comment.map(tag('Comment')),
+    hexNumber.map(tag('HexNumber')),
+    decNumber.map(tag('DecNumber')),
+    tagString.map(tag('TaggedString')),
+    quotedString.map(tag('QuotedString')),
+    ident.map(tag('Ident')),
 )
 
-const ident = map(kplus(oneRe(/[^\s.:#,;@[\]{}()]/)), join)
+const tokenSeq = P.all(token)
 
-const tagString = and(chars('#'), ident)
-const quote = chars('"')
-const quoteEsc = map(chars('\\"'), () => '"')
-const notQuote = notEq('"')
-const stringChars = map(
-    star(alt([quoteEsc, notQuote])),
-    join
-)
-const quotedString = seq([quote, stringChars, quote])
-
-const token = alt([
-    map(chars('::'), tag('FieldOp')),
-    map(chars(':='), tag('Assignment')),
-    map(chars(':'), tag('Colon')),
-    map(chars('['), tag('LBrk')),
-    map(chars(']'), tag('RBrk')),
-    map(chars('{'), tag('LCurly')),
-    map(chars('}'), tag('RCurly')),
-    map(chars('('), tag('LParen')),
-    map(chars(')'), tag('RParen')),
-    map(chars('@'), tag('At')),
-    map(chars('.'), tag('Dot')),
-    map(whitespace, tag('Whitespace')),
-    map(comment, tag('Comment')),
-    map(hexNumber, tag('HexNumber')),
-    map(decNumber, tag('DecNumber')),
-    map(tagString, tag('TaggedString')),
-    map(quotedString, tag('QuotedString')),
-    map(ident, tag('Ident')),
-])
-
-const tokenSeq = star(token)
-
-const tokenize = comp(done(tokenSeq), Array.from)
+const tokenize = (str) => tokenSeq.parseAll(Array.from(str))
 
 module.exports = { tokenize }

@@ -1,6 +1,6 @@
 const { tokenize } = require('./lexer')
-const { tagConstructors, comp, spread } = require('./util')
-const { token, seq, alt, map, done, lazy, star, kplus, maybeSepBy, wrapWith, spreadMaybe } = require('./parser-combinators')
+const { tagConstructors, spread, flatten } = require('./util')
+const P = require('./combinators')
 
 const tagSeq = (tagger) => (init, args) =>
     args.reduce((acc, item) => tagger(acc, item), init)
@@ -19,153 +19,135 @@ const tags = tagConstructors([
     ['Keyword', 'keyword', 'assignment', 'value'],
 ])
 
-const number = map(
-    alt([token('HexNumber'), token('DecNumber')]),
-    ({ value }) => Number(value))
+const token = (type) => P.match((x) => x.type === type)
 
-const string = map(
-    alt([token('TaggedString'), token('QuotedString')]),
-    ({ value: [_, value] }) => value
+const number = P.alt(
+    token('HexNumber'), token('DecNumber')
+).map((x) => Number(x.value))
+
+const string = P.alt(
+    token('TaggedString'), token('QuotedString')
+).map((x) => x.value[1])
+
+const ident = token('Ident').map((x) => x.value)
+
+const terminal = P.alt(
+    number.map(tags.Number),
+    string.map(tags.String),
+    ident.map(tags.Ident)
 )
 
-const ident = map(token('Ident'), ({ value }) => value)
+const space = P.alt(token('Whitespace'), token('Comment'))
 
-const terminal = alt([
-    map(number, tags.Number),
-    map(string, tags.String),
-    map(ident, tags.Ident),
-])
+const _ = P.all(space)
+const __ = P.plus(space)
+const doublePad = (p) => P.wrapped(P.sepBy(p, __), _)
 
-const space = alt([
-    token('Whitespace'),
-    token('Comment'),
-])
-
-const _ = star(space)
-const __ = kplus(space)
-
-const namedArg = lazy(() => map(
-    seq([ident, token('Colon'), _, expression]),
-    ([key, _, __, value]) => tags.NamedArg(key, value)
-))
-
-const indexArg = lazy(() => map(expression, tags.Arg))
-
-const arg = alt([namedArg, indexArg])
-
-const record = map(
-    wrapWith(
-        wrapWith(maybeSepBy(arg, __), _),
-        token('LBrk'),
-        token('RBrk')),
-    tags.Record
+const namedArg = P.lazy(() =>
+    P.seq(ident, token('Colon'), _, expression)
+        .map(([key, _, __, value]) => tags.NamedArg(key, value))
 )
+const indexArg = P.lazy(() => expression.map(tags.Arg))
+const arg = P.alt(namedArg, indexArg)
 
-const field = map(
-    seq([_, token('FieldOp'), alt([number, ident])]),
-    ([_, __, key]) => key
-)
+const record = P.wrapped(doublePad(arg), token('LBrk'), token('RBrk'))
+    .map(tags.Record)
 
-const fieldGet = map(
-    seq([alt([record, terminal]), kplus(field)]),
-    spread(tagSeq(tags.FieldGet))
-)
+const field = P.seq(
+    _, token('FieldOp'), P.alt(number, ident)
+).map((x) => x[2])
 
-const fnArgs = wrapWith(
-    wrapWith(maybeSepBy(arg, __), _),
+const fieldGet = P.seq(
+    P.alt(record, terminal), P.plus(field)
+).map(spread(tagSeq(tags.FieldGet)))
+
+const fnArgs = P.wrapped(
+    doublePad(arg),
     token('LParen'),
     token('RParen'))
 
-const fnCall = map(
-    seq([
-        alt([fieldGet, record, terminal]),
-        kplus(fnArgs),
-    ]),
-    spread(tagSeq(tags.FnCall)))
+const fnCall = P.seq(
+    P.alt(fieldGet, record, terminal),
+    P.plus(fnArgs)
+).map(spread(tagSeq(tags.FnCall)))
 
-const fnBody = lazy(() =>
-    wrapWith(body, token('LCurly'), token('RCurly')))
+const fnBody = P.lazy(() =>
+    P.wrapped(body, token('LCurly'), token('RCurly')))
 
 // TODO: destructuring
-const binding = alt([
-    map(ident, tags.Ident),
-])
+const binding = P.alt(
+    ident.map(tags.Ident)
+)
 
-const namedBindArg = map(
-    seq([ident, token('Colon'), _, binding]),
-    ([value, _, __, expr]) => tags.NamedArg(value, expr))
-const indexBindArg = map(binding, tags.Arg)
-const bindArg = alt([namedBindArg, indexBindArg])
+const namedBindArg = P.seq(ident, token('Colon'), _, binding)
+    .map(([key, _, __, value]) => tags.NamedArg(key, value))
 
-const fnParams = wrapWith(
-    wrapWith(maybeSepBy(bindArg, __), _),
+const punArg = P.seq(token('FieldOp'), ident)
+    .map(([_, key]) => tags.NamedArg(key, tags.Ident(key)))
+
+const indexBindArg = binding.map(tags.Arg)
+const bindArg = P.alt(namedBindArg, punArg, indexBindArg)
+
+const fnParams = P.wrapped(
+    doublePad(bindArg),
     token('LParen'),
     token('RParen')
 )
 
-const fnExp = alt([
-    map(seq([fnParams, fnBody]), spread(tags.FnExp)),
-    map(fnBody, (body) => tags.FnExp([], body)),
-])
-
-const dotArgs = seq([
-    token('Dot'),
-    alt([fieldGet, record, terminal]),
-    spreadMaybe(fnArgs),
-])
-
-const dotFnCall = map(
-    seq([
-        alt([fnCall, fieldGet, record, terminal]),
-        kplus(dotArgs),
-    ]),
-    ([firstArg, seq]) => seq.reduce(
-        (acc, [_, ident, restArgs]) =>
-            tags.FnCall(ident, [
-                tags.Arg(acc),
-                ...restArgs,
-            ]),
-        firstArg
-    )
+const fnExp = P.alt(
+    P.seq(fnParams, fnBody).map(spread(tags.FnExp)),
+    fnBody.map((body) => tags.FnExp([], body))
 )
 
-const keywordStatement = lazy(() => map(
-    seq([
-        wrapWith(expression, token('At'), __),
-        expression,
-    ]),
-    ([keyword, value]) => tags.Keyword(keyword, null, value)
+const dotArgs = P.seq(
+    token('Dot'),
+    P.alt(fieldGet, record, terminal),
+    P.maybe(fnArgs).map(flatten),
+)
+
+const dotFnCall = P.seq(
+    P.alt(fnCall, fieldGet, record, terminal),
+    P.plus(dotArgs)
+).map(([firstArg, seq]) => seq.reduce(
+    (acc, [_, ident, restArgs]) =>
+        tags.FnCall(ident, [
+            tags.Arg(acc),
+            ...restArgs,
+        ]),
+    firstArg
 ))
 
-const keywordBinding = lazy(() => map(
-    seq([
-        wrapWith(expression, token('At'), __),
-        binding,
-        wrapWith(token('Assignment'), __),
-        expression,
-    ]),
-    ([kw, bind, _, value]) => tags.Keyword(kw, bind, value)
-))
+const keywordStatement = P.lazy(() => P.seq(
+    P.wrapped(expression, token('At'), __),
+    expression
+).map(([keyword, value]) => tags.Keyword(keyword, null, value)))
 
-const keyword = alt([keywordBinding, keywordStatement])
+const keywordBinding = P.lazy(() => P.seq(
+    P.wrapped(expression, token('At'), __),
+    binding,
+    P.wrapped(token('Assignment'), __),
+    expression,
+).map(([kw, bind, _, value]) => tags.Keyword(kw, bind, value)))
 
-const expression = alt([
+const keyword = P.alt(keywordBinding, keywordStatement)
+
+const expression = P.alt(
     keyword,
     record,
     fnExp,
-    map(number, tags.Number),
-    map(string, tags.String),
+    number.map(tags.Number),
+    string.map(tags.String),
     dotFnCall,
     fnCall,
     fieldGet,
-    map(ident, tags.Ident),
-])
+    ident.map(tags.Ident),
+)
 
-const body = wrapWith(maybeSepBy(expression, __), _)
+const body = doublePad(expression)
 
-const program = map(body, tags.Program)
+const program = body.map(tags.Program)
 
-const expr = comp(done(expression), tokenize)
-const parse = comp(done(program), tokenize)
+const expr = (str) => expression.parseAll(tokenize(str))
+const parse = (str) => program.parseAll(tokenize(str))
 
 module.exports = { parse, expr, tags }

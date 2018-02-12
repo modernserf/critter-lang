@@ -51,9 +51,7 @@ test('parses an identifier', (t) => {
         Ident('++=>')
     )
 
-    t.throws(() => {
-        expr('foo bar')
-    })
+    t.equals(expr('foo bar'), null)
 
     t.end()
 })
@@ -154,6 +152,22 @@ test('function definition, with args', (t) => {
             Record([
                 Arg(Ident('x')),
                 Arg(Ident('y')),
+            ]),
+        ])
+    )
+    t.end()
+})
+
+test('function definition, punned named arg', (t) => {
+    t.deepEquals(
+        expr(`(x ::foo){ [x foo] }`),
+        FnExp([
+            Arg(Ident('x')),
+            NamedArg('foo', Ident('foo')),
+        ], [
+            Record([
+                Arg(Ident('x')),
+                Arg(Ident('foo')),
             ]),
         ])
     )
