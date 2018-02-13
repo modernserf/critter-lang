@@ -106,18 +106,31 @@ export const eq = (value) =>
     match((x) => x === value)
         .mapError((_, val, index) => ['expected_value', value, val, index])
 
-// matches if any of ps matches (regex |)
-// TODO: concatenate with other "alt" parsers
-export const alt = (...ps) => new MemoParser((input, index) => {
-    for (const p of ps) {
-        const res = p.parse(input, index)
-        if (res.ok) { return res }
+// matches if any of ps matches (regex | )
+class AltParser extends MemoParser {
+    constructor (parsers) {
+        super((input, index) => this._parseAlts(input, index))
+        this._setAlts(parsers)
     }
-    return err('no_alts', input[index], index)
-})
+    _setAlts (parsers) {
+        this._alts = parsers.reduce(
+            (ps, p) => p._alts ? ps.concat(p._alts) : ps.concat([p]),
+            [])
+    }
+    _parseAlts (input, index) {
+        for (const p of this._alts) {
+            const res = p.parse(input, index)
+            if (res.ok) { return res }
+        }
+        return err('no_alts', input[index], index)
+    }
+}
+
+export const alt = (...ps) => new AltParser(ps)
 
 // matches if sequence of ps match
-// TODO: concatenate with other "seq" parsers
+// TODO: concatenate with other "seq" parsers?
+// how would you preserve the return shape?
 // TODO: check if sum of lengths is possible
 export const seq = (...ps) => new MemoParser((input, index) => {
     const output = []
