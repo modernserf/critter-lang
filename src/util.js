@@ -28,7 +28,7 @@ export const tagger = (type, keys) => (...args) =>
 export const tagConstructors = (defs) => defs.reduce((obj, [type, ...keys]) =>
     Object.assign(obj, {[type]: tagger(type, keys)}), {})
 
-export const match = (obj, onDefault) => (tag, index) =>
-    obj[tag.type] ? obj[tag.type](tag, index) : onDefault(tag, index)
+export const match = (obj, onDefault) => (tag, ...args) =>
+    obj[tag.type] ? obj[tag.type](tag, ...args) : onDefault(tag, ...args)
 
 export const flatten = (arr) => [].concat(...arr)

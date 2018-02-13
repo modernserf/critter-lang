@@ -5,6 +5,15 @@ import * as P from './combinators'
 const tagSeq = (tagger) => (init, args) =>
     args.reduce((acc, item) => tagger(acc, item), init)
 
+// TODO: preserve whitespace, comments,
+// original number/string format for pretty-printing?
+// TODO: separate phase to convert dotFnCall -> fnCall,
+// expand keyword -> fnExp
+// convert untagged exprs to implied `@do`
+// convert `@let [#foo x] := bar` to
+// @pre { bar::0.==(#foo) }
+// @let x := bar::1
+
 export const tags = tagConstructors([
     ['Program', 'body'],
     ['Number', 'value'],
@@ -61,19 +70,6 @@ const fieldGet = P.seq(
     P.alt(record, terminal), P.plus(field)
 ).map(spread(tagSeq(tags.FieldGet)))
 
-const fnArgs = P.wrapped(
-    doublePad(arg),
-    token('LParen'),
-    token('RParen'))
-
-const fnCall = P.seq(
-    P.alt(fieldGet, record, terminal),
-    P.plus(fnArgs)
-).map(spread(tagSeq(tags.FnCall)))
-
-const fnBody = P.lazy(() =>
-    P.wrapped(body, token('LCurly'), token('RCurly')))
-
 // TODO: destructuring
 const binding = P.alt(
     ident.map(tags.Ident)
@@ -94,10 +90,23 @@ const fnParams = P.wrapped(
     token('RParen')
 )
 
+const fnBody = P.lazy(() =>
+    P.wrapped(body, token('LCurly'), token('RCurly')))
+
 const fnExp = P.alt(
     P.seq(fnParams, fnBody).map(spread(tags.FnExp)),
     fnBody.map((body) => tags.FnExp([], body))
 )
+
+const fnArgs = P.wrapped(
+    doublePad(arg),
+    token('LParen'),
+    token('RParen'))
+
+const fnCall = P.seq(
+    P.alt(fnExp, fieldGet, record, terminal),
+    P.plus(fnArgs)
+).map(spread(tagSeq(tags.FnCall)))
 
 const dotArgs = P.seq(
     token('Dot'),
@@ -133,14 +142,12 @@ const keyword = P.alt(keywordBinding, keywordStatement)
 
 const expression = P.alt(
     keyword,
-    record,
-    fnExp,
-    number.map(tags.Number),
-    string.map(tags.String),
     dotFnCall,
     fnCall,
+    fnExp,
     fieldGet,
-    ident.map(tags.Ident),
+    record,
+    terminal,
 )
 
 const body = doublePad(expression)

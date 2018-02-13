@@ -59,7 +59,7 @@ it('parses a record', () => {
     )
 })
 
-it('field access', () => {
+it('parses field access', () => {
     expect(
         expr('foo::bar::baz::0')).toEqual(
         FieldGet(
@@ -67,6 +67,17 @@ it('field access', () => {
                 FieldGet(Ident('foo'), 'bar'),
                 'baz'),
             0)
+    )
+})
+
+it('parses field access on a record literal', () => {
+    expect(
+        expr('[#foo]::0')
+    ).toEqual(
+        FieldGet(
+            Record([Arg(Str('foo'))]),
+            0
+        )
     )
 })
 
@@ -137,6 +148,17 @@ it('function definition, punned named arg', () => {
                 Arg(Ident('foo')),
             ]),
         ])
+    )
+})
+
+it('parses an iife', () => {
+    expect(
+        expr(`(x){ x }(1)`)
+    ).toEqual(
+        FnCall(
+            FnExp([Arg(Ident('x'))], [Ident('x')]),
+            [Arg(Num(1))]
+        )
     )
 })
 
