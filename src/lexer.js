@@ -9,7 +9,7 @@ const whitespace = P.plus(P.whitespace)
 
 const comment = P.seq(
     P.chars(';'),
-    P.all(P.notOneOf(P.chars(''))).map(join)
+    P.all(P.notOneOf(P.chars('\n'))).map(join)
 )
 
 const hexNumber = P.seq(

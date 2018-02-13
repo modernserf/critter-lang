@@ -12,6 +12,7 @@
   "devDependencies": {
     "babel-core": "^6.26.0",
     "babel-jest": "^22.2.2",
+    "babel-minify": "^0.3.0",
     "babel-preset-env": "^1.6.1",
     "eslint": "^4.17.0",
     "eslint-config-standard": "^11.0.0-beta.0",
@@ -26,7 +27,7 @@
   },
   "scripts": {
     "test": "jest",
-    "build-highlighter": "rollup src/highlighter.js --o docs/highlighter.js --f iife",
+    "build-highlighter": "rollup src/highlighter.js --f iife | minify --out-file docs/highlighter.js",
     "build": "npm run build-highlighter"
   },
   "repository": {
