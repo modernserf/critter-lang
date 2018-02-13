@@ -8,13 +8,13 @@ const ok = (value) => ({
 const err = (...errors) => ({
     status: 'error',
     errors,
-    then: () => err(...errors),
+    then () { return this },
 })
 const update = (input, output) => ({
     status: 'update',
     input,
     output,
-    then: () => update(input, output),
+    then () { return this },
 })
 
 export const types = tagConstructors([
@@ -29,7 +29,7 @@ export const types = tagConstructors([
     ['Var'],
 ])
 
-function checkDuplicateKeys (args, scope) {
+function checkDuplicateKeys (args) {
     const out = {}
     for (const [i, arg] of args.entries()) {
         const key = arg.key || i
@@ -45,7 +45,7 @@ function checkDuplicateKeys (args, scope) {
 const flatMapValues = (obj, f) => {
     const out = {}
     for (const key in obj) {
-        const res = f(obj[key])
+        const res = f(obj[key], key)
         if (res.status !== 'ok') { return res }
         out[key] = res.value
     }
@@ -72,14 +72,33 @@ const checkField = match({
     return err('cannot_get_field_on', target.type)
 })
 
+const checkFnCall = match({
+    Function: (calleeType, argTypes) => {
+        // unification, again
+        for (const key in argTypes) {
+            if (!calleeType.params[key]) {
+                return err('unexpected_param', key)
+            }
+            const res = unify(calleeType.params[key], argTypes[key])
+            if (res.status !== 'ok') { return res }
+        }
+        return ok(calleeType.returns)
+    },
+}, (calleeType) => {
+    return err('not_a_function', calleeType.type)
+})
+
+const checkArgs = (scope) => (args) =>
+    flatMapValues(args, (arg) => check(arg, scope))
+
 const check = match({
     Number: () => ok(types.Number()),
     String: () => ok(types.String()),
     Ident: ({ value }, scope) =>
         scope[value] ? ok(scope[value]) : err('unknown_ident', value),
     Record: ({ args }, scope) =>
-        checkDuplicateKeys(args, scope).then((args) =>
-            flatMapValues(args, (arg) => check(arg, scope))
+        checkDuplicateKeys(args).then(
+            checkArgs(scope)
         ).then((argTypes) =>
             ok(types.Record(argTypes))
         ),
@@ -88,71 +107,45 @@ const check = match({
             checkField(tgt, key)
         ),
     FnCall: ({ callee, args }, scope) => {
-        callee = check(callee, scope)
-        if (callee.status !== 'ok') { return callee }
-        callee = callee.value
-        const argTypes = {}
-        for (const [i, arg] of args.entries()) {
-            const res = check(arg.value, scope)
-            if (res.status !== 'ok') { return res }
-            const key = arg.key || i
-            if (key in argTypes) {
-                return err('duplicate_key', key)
-            } else {
-                argTypes[key] = res.value
-            }
-        }
-        switch (callee.type) {
-        case 'Function': {
-            // unification, again
-            for (const key in argTypes) {
-                if (!callee.params[key]) {
-                    return err('unexpected_param', key)
-                }
-                const res = unify(callee.params[key], argTypes[key])
-                if (res.status !== 'ok') { return res }
-            }
-            return ok(callee.returns)
-        }
-        default:
-            return err('not_a_function', callee.type)
-        }
+        return check(callee, scope).then((calleeType) =>
+            checkDuplicateKeys(args).then(
+                checkArgs(scope)
+            ).then((argTypes) => ({ calleeType, argTypes }))
+        ).then(({ calleeType, argTypes }) =>
+            checkFnCall(calleeType, argTypes)
+        )
     },
     // TODO: body should be already expanded to a single expression
     FnExp: ({ params, body: [body] }, outerScope) => {
-        const scope = { ...outerScope }
-        const paramTypes = {}
+        return checkDuplicateKeys(params).then((params) => {
+            const scope = { ...outerScope }
+            const reverseLookup = new Map()
 
-        const reverseLookup = new Map()
-
-        // TODO: support pattern matching
-        for (const [i, p] of params.entries()) {
-            const ref = types.Var()
-            const name = p.value.value
-            scope[name] = ref
-            const key = p.key || i
-            if (key in paramTypes) {
-                return err('duplicate_key', key)
-            } else {
-                paramTypes[key] = ref
+            return flatMapValues(params, (p, key) => {
+                const ref = types.Var()
+                const name = p.value
+                scope[name] = ref
+                reverseLookup.set(ref, { name, key })
+                return ok(ref)
+            }).then((paramTypes) => {
+                return ok({ scope, paramTypes, reverseLookup })
+            })
+        }).then(({ scope, paramTypes, reverseLookup }) => {
+            // TODO: this is "the same thing" as unification
+            // the type checker should look more like a prolog solver
+            let res = check(body, scope)
+            while (res.status === 'update') {
+                if (!reverseLookup.has(res.input)) { return res }
+                const { name, key } = reverseLookup.get(res.input)
+                scope[name] = res.output
+                paramTypes[key] = res.output
+                res = check(body, scope)
             }
-            reverseLookup.set(ref, { name, key })
-        }
 
-        // TODO: this is "the same thing" as unification
-        // the type checker should look more like a prolog solver
-        let res = check(body, scope)
-        while (res.status === 'update') {
-            if (!reverseLookup.has(res.input)) { return res }
-            const { name, key } = reverseLookup.get(res.input)
-            scope[name] = res.output
-            paramTypes[key] = res.output
-            res = check(body, scope)
-        }
+            if (res.status === 'error') { return res }
 
-        if (res.status === 'error') { return res }
-
-        return ok(types.Function(paramTypes, res.value))
+            return ok(types.Function(paramTypes, res.value))
+        })
     },
 }, (tag) => {
     throw new Error(`Unknown AST node ${tag.type}`)
