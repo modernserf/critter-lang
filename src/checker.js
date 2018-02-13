@@ -1,171 +1,152 @@
 import { tagConstructors, match } from './util'
 
-const ok = (value) => ({
+const ok = (value, scope) => ({
     status: 'ok',
     value,
-    then: (f) => f(value),
+    scope,
+    then: (f) => f(value, scope),
 })
 const err = (...errors) => ({
     status: 'error',
     errors,
     then () { return this },
 })
-const update = (input, output) => ({
-    status: 'update',
-    input,
-    output,
-    then () { return this },
-})
 
 export const types = tagConstructors([
     ['Number'],
     ['String'],
-    ['Record', 'args'],
-    // record where the types / presence of some but not all keys are known
-    ['PartialRecord', 'args'],
+    ['Record', 'members'],
     ['Function', 'params', 'returns'],
-    // TODO: partial functions
+
+    ['Field', 'key', 'value'],
+    ['Product', 'members'],
     ['Sum', 'members'],
-    ['Var'],
 ])
 
-function checkDuplicateKeys (args) {
-    const out = {}
-    for (const [i, arg] of args.entries()) {
-        const key = arg.key || i
-        if (key in out) {
-            return err('duplicate_key', key)
-        } else {
-            out[key] = arg.value
-        }
-    }
-    return ok(out)
-}
-
-const flatMapValues = (obj, f) => {
-    const out = {}
-    for (const key in obj) {
-        const res = f(obj[key], key)
-        if (res.status !== 'ok') { return res }
-        out[key] = res.value
-    }
-    return ok(out)
-}
-
-const checkField = match({
-    Record: (target, key) => {
-        const result = target.args[key]
-        return result ? ok(result) : err('missing_field', key)
-    },
-    PartialRecord: (target, key) => {
-        if (target.args[key]) { return ok(target.args[key]) }
-        const res = types.Var()
-        const record = types.PartialRecord({ ...target.args, [key]: res })
-        return update(target, record)
-    },
-    Var: (target, key) => {
-        const res = types.Var()
-        const record = types.PartialRecord({ [key]: res })
-        return update(target, record)
-    },
-}, (target) => {
-    return err('cannot_get_field_on', target.type)
-})
-
-const checkFnCall = match({
-    Function: (calleeType, argTypes) => {
-        // unification, again
-        for (const key in argTypes) {
-            if (!calleeType.params[key]) {
-                return err('unexpected_param', key)
-            }
-            const res = unify(calleeType.params[key], argTypes[key])
-            if (res.status !== 'ok') { return res }
-        }
-        return ok(calleeType.returns)
-    },
-}, (calleeType) => {
-    return err('not_a_function', calleeType.type)
-})
-
-const checkArgs = (scope) => (args) =>
-    flatMapValues(args, (arg) => check(arg, scope))
-
 const check = match({
-    Number: () => ok(types.Number()),
-    String: () => ok(types.String()),
-    Ident: ({ value }, scope) =>
-        scope[value] ? ok(scope[value]) : err('unknown_ident', value),
-    Record: ({ args }, scope) =>
-        checkDuplicateKeys(args).then(
-            checkArgs(scope)
-        ).then((argTypes) =>
-            ok(types.Record(argTypes))
-        ),
-    FieldGet: ({ target, key }, scope) =>
-        check(target, scope).then((tgt) =>
-            checkField(tgt, key)
-        ),
-    FnCall: ({ callee, args }, scope) => {
-        return check(callee, scope).then((calleeType) =>
-            checkDuplicateKeys(args).then(
-                checkArgs(scope)
-            ).then((argTypes) => ({ calleeType, argTypes }))
-        ).then(({ calleeType, argTypes }) =>
-            checkFnCall(calleeType, argTypes)
-        )
-    },
-    // TODO: body should be already expanded to a single expression
-    FnExp: ({ params, body: [body] }, outerScope) => {
-        return checkDuplicateKeys(params).then((params) => {
-            const scope = { ...outerScope }
-            const reverseLookup = new Map()
+    Number: (_, scope) => ok(types.Number(), scope),
+    String: (_, scope) => ok(types.String(), scope),
 
-            return flatMapValues(params, (p, key) => {
-                const ref = types.Var()
-                const name = p.value
-                scope[name] = ref
-                reverseLookup.set(ref, { name, key })
-                return ok(ref)
-            }).then((paramTypes) => {
-                return ok({ scope, paramTypes, reverseLookup })
-            })
-        }).then(({ scope, paramTypes, reverseLookup }) => {
-            // TODO: this is "the same thing" as unification
-            // the type checker should look more like a prolog solver
-            let res = check(body, scope)
-            while (res.status === 'update') {
-                if (!reverseLookup.has(res.input)) { return res }
-                const { name, key } = reverseLookup.get(res.input)
-                scope[name] = res.output
-                paramTypes[key] = res.output
-                res = check(body, scope)
+    Ident: ({ value }, scope) =>
+        scope[value]
+            ? ok(scope[value], scope)
+            : err('unknown_ident', value),
+
+    Record: ({ args }, prevScope) =>
+        args.reduce((chain, { key, value }, i) =>
+            chain.then((args, scope) =>
+                check(value, scope).then((value, scope) => {
+                    args.push(types.Field(key || i, value))
+                    return ok(args, scope)
+                })
+            ), ok([], prevScope)
+        ).then((fields, scope) =>
+            ok(types.Record(fields), scope)),
+
+    FieldGet: ({ target, key }, prevScope) => {
+        return check(target, prevScope).then((tgt, scope) => {
+            if (['Number', 'String', 'Function'].includes(tgt.type)) {
+                return err('cannot_get_field_on', tgt.type)
             }
 
-            if (res.status === 'error') { return res }
+            const val = Symbol('field_get')
+            const nextScope = unify(
+                types.Product([types.Field(key, val)]),
+                tgt,
+                scope)
+            return nextScope
+                ? ok(lookup(nextScope, val), nextScope)
+                : err('missing_field', key)
+        })
+    },
 
-            return ok(types.Function(paramTypes, res.value))
+    // TODO: body should be single expr, not lines
+    FnExp: ({ params, body: [body] }, parentScope) => {
+        const fields = params.map(({ value: { value }, key }, i) =>
+            [key || i, value, Symbol(value)])
+
+        const scope = fields.reduce(
+            (s, [key, value, sym]) => set(s, value, sym),
+            parentScope)
+
+        return check(body, scope).then((b, scope) => {
+            const val = Symbol('fn_exp')
+            scope = unify(val, b, scope)
+            const paramsBody = fields.map(([key, _, sym]) =>
+                types.Field(key, lookup(scope, sym)))
+            return ok(types.Function(paramsBody, lookup(scope, val)), scope)
         })
     },
 }, (tag) => {
     throw new Error(`Unknown AST node ${tag.type}`)
 })
 
-function unify (l, r) {
-    if (l === r) { return ok(l) }
-    if (l.type === 'Var') { return update(l, r) }
-    if (r.type === 'Var') { return update(r, l) }
+const sym = (x) => typeof x === 'symbol'
 
-    // TODO: unify partial and total types here
+function lookup (scope, item) {
+    if (sym(item) && scope[item]) {
+        return lookup(scope, scope[item])
+    }
+    return item
+}
+
+function set (scope, key, value) {
+    return { ...scope, [key]: value }
+}
+
+function unify (l, r, scope) {
+    l = lookup(scope, l)
+    r = lookup(scope, r)
+    if (l === r) { return scope }
+    if (sym(l)) { return set(scope, l, r) }
+    if (sym(r)) { return set(scope, r, l) }
 
     if (l.type === r.type) {
-        // TODO: recurse on record, args here
-        return ok(l)
+        switch (l.type) {
+        case 'Field':
+            if (l.key !== r.key) { return null }
+            return unify(l.value, r.value, scope)
+        case 'Record': {
+            if (l.members.length !== r.members.length) { return null }
+            for (let key in l.members) {
+                scope = unify(l.members[key], r.members[key], scope)
+                if (!scope) { return null }
+            }
+            return scope
+        }
+        case 'Product': {
+            // union of l and r
+            return scope
+        }
+        }
+
+        return scope
     }
-    return err('mismatched_types', l.type, r.type)
+    if (l.type === 'Record') { return unifyRecord(l, r, scope) }
+    if (r.type === 'Record') { return unifyRecord(r, l, scope) }
+
+    return null
+}
+
+// TODO: this is On^2
+function hasField (record, field, scope) {
+    for (const f of record.members) {
+        const nextScope = unify(f, field, scope)
+        if (nextScope) { return nextScope }
+    }
+    return null
+}
+
+function unifyRecord (record, other, scope) {
+    if (other.type !== 'Product') { return null }
+    for (const field of other.members) {
+        scope = hasField(record, field, scope)
+        if (!scope) { return null }
+    }
+    return scope
 }
 
 const rootScope = {}
-const clean = (x) => { delete x.then; return x }
+const clean = (x) => { delete x.then; delete x.scope; return x }
 
 export const checker = (ast) => clean(check(ast, rootScope))

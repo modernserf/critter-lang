@@ -13,6 +13,7 @@ const tagSeq = (tagger) => (init, args) =>
 // convert `@let [#foo x] := bar` to
 // @pre { bar::0.==(#foo) }
 // @let x := bar::1
+// checks duplicate fields (tired of handling this in type checker!)
 
 export const tags = tagConstructors([
     ['Program', 'body'],

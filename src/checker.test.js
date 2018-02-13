@@ -11,7 +11,10 @@ it('typechecks literals', () => {
     expect(check('#foo'))
         .toEqual(ok(types.String()))
     expect(check('[#foo 123]'))
-        .toEqual(ok(types.Record({ 0: types.String(), 1: types.Number() })))
+        .toEqual(ok(types.Record([
+            types.Field(0, types.String()),
+            types.Field(1, types.Number()),
+        ])))
 })
 
 it('typechecks field access', () => {
@@ -32,27 +35,28 @@ it('fails unknown idents', () => {
 
 it('typechecks fn definitions', () => {
     expect(check('{ #foo }'))
-        .toEqual(ok(types.Function({}, types.String())))
-    const res = check('(x){ x }')
-    expect(res)
-        .toEqual(ok(types.Function({ 0: types.Var() }, types.Var())))
-    expect(res.value.params[0] === res.value.returns).toBe(true)
+        .toEqual(ok(types.Function([], types.String())))
+
+    const res = check('(x){ x }').value
+    expect(res.type).toEqual('Function')
+    expect(res.params[0].value)
+        .toEqual(res.returns)
 })
 
 it('infers types from usage', () => {
-    expect(check(`(x){ x::0 }`))
-        .toEqual(ok(types.Function({
-            0: types.PartialRecord({ 0: types.Var() }),
-        }, types.Var())))
-
-    // expect(check(`(x){ (y z){ [y::0 z::1] }(x x) }`))
-    //     .toEqual(ok(types.Function({
-    //         0: types.PartialRecord({
-    //             0: types.Var(),
-    //             1: types.Var(),
-    //         }),
-    //     }, types.Record({
-    //         0: types.Var(),
-    //         1: types.Var(),
-    //     }))))
+    const res = check(`(x){ x::foo }`).value
+    expect(res.type).toEqual('Function')
+    expect(res.params[0].value.type).toEqual('Product')
+    expect(res.params[0].value.members[0].key).toEqual('foo')
 })
+// expect(check(`(x){ (y z){ [y::0 z::1] }(x x) }`))
+//     .toEqual(ok(types.Function({
+//         0: types.PartialRecord({
+//             0: types.Var(),
+//             1: types.Var(),
+//         }),
+//     }, types.Record({
+//         0: types.Var(),
+//         1: types.Var(),
+//     }))))
+// })
