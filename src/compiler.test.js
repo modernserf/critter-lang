@@ -5,21 +5,21 @@ const {
     Number: Num, String: Str, Ident,
 } = tags
 
-it('number literals', () => {
+it('compiles number literals', () => {
     expect(compile(Num(123)))
         .toEqual('123')
     expect(compile(Num(-0.2345)))
         .toEqual('-0.2345')
 })
 
-it('string literals', () => {
+it('compiles string literals', () => {
     expect(compile(Str('foo')))
         .toEqual(`"foo"`)
     expect(compile(Str(`This "text" has escaped characters`)))
         .toEqual(`"This \\"text\\" has escaped characters"`)
 })
 
-it('identifier', () => {
+it('compiles identifiers', () => {
     expect(compile(Ident('foobar')))
         .toEqual('foobar')
     expect(compile(Ident('++=>')))
@@ -30,7 +30,7 @@ it('identifier', () => {
         .toEqual('_var')
 })
 
-it('record', () => {
+it('compiles records', () => {
     const prog = Record([
         Arg(Ident('bar')),
         Arg(Str('baz')),
@@ -48,7 +48,7 @@ it('record', () => {
     ].join('\n'))
 })
 
-it('function call', () => {
+it('compiles function calls', () => {
     const prog = FnCall(Ident('foo'), [
         Arg(Ident('bar')),
         Arg(Str('baz')),
@@ -66,7 +66,7 @@ it('function call', () => {
     ].join('\n'))
 })
 
-it('function expression no args', () => {
+it('compiles function expression with no args', () => {
     const prog = FnExp([], [
         Ident('x'),
     ])
@@ -77,7 +77,7 @@ it('function expression no args', () => {
     ].join('\n'))
 })
 
-it('function expression with args', () => {
+it('compiles function expression with args', () => {
     const prog = FnExp([
         Arg(Ident('x')),
     ], [
@@ -101,21 +101,19 @@ it('function expression with args', () => {
     ].join('\n'))
 })
 
-it('field access', () => {
+it('compiles field access', () => {
     expect(compile(FieldGet(Ident('foo'), 'bar')))
-        .toEqual([
-            `CRITTER.getFields(foo, "bar")`,
-        ].join('\n'))
+        .toEqual(`foo["bar"]`)
 })
 
-it('bare keyword', () => {
+it('compiles bare keywords', () => {
     const prog = Keyword(Ident('foo'), null, Ident('bar'))
     expect(() => {
         compile(prog)
     }).toThrow()
 })
 
-it('single keyword', () => {
+it('compiles single keywords', () => {
     const prog = FnExp([], [
         Keyword(Ident('foo'), null, Ident('bar')),
     ])
@@ -127,7 +125,7 @@ it('single keyword', () => {
     ].join('\n'))
 })
 
-it('sequence of keywords', () => {
+it('compiles a sequence of keywords', () => {
     const prog = FnExp([], [
         Keyword(Ident('foo'), null, Ident('bar')),
         Keyword(Ident('baz'), null, Ident('quux')),
@@ -145,7 +143,7 @@ it('sequence of keywords', () => {
     ].join('\n'))
 })
 
-it('keyword assignments', () => {
+it('compiles keyword assignments', () => {
     const prog = FnExp([], [
         Keyword(Ident('foo'), Ident('x'), Ident('bar')),
         FnCall(Ident('inc'), [

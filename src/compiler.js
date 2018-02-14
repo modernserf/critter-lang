@@ -52,7 +52,13 @@ const transform = match({
     NamedArg: ({ key, value }) =>
         JS.ObjectProperty(JS.StringLiteral(key), transform(value)),
     FieldGet: ({ target, key }) =>
-        runtimeMethod('getFields', [transform(target), JS.StringLiteral(key)]),
+        JS.MemberExpression(
+            transform(target),
+            typeof key === 'string'
+                ? JS.StringLiteral(key)
+                : JS.NumericLiteral(key),
+            true
+        ),
     Keyword: () => {
         throw new Error('Keyword must be compiled in function or program context')
     },
