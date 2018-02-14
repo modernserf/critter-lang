@@ -1,9 +1,7 @@
 import generate from '@babel/generator'
-import { quote } from './quote'
-import { pipe, Either, tagConstructors, match } from './util'
+import { pipe, tagConstructors, match } from './util'
 
 const JS = tagConstructors([
-    ['Program', 'body'],
     ['NumericLiteral', 'value'],
     ['StringLiteral', 'value'],
     ['Identifier', 'name'],
@@ -22,8 +20,7 @@ const JS = tagConstructors([
 const oneItem = (f, xs) => xs.length ? [f(xs)] : []
 
 const transform = match({
-    Program: ({ body }) =>
-        JS.Program(oneItem(buildSequence, body)),
+    Program: ({ body }) => transform(body[0]),
     Number: ({ value }) =>
         value >= 0
             ? JS.NumericLiteral(value)
@@ -43,9 +40,7 @@ const transform = match({
             oneItem(
                 (xs) => JS.ObjectExpression(xs.map(transform)),
                 params),
-            JS.BlockStatement([
-                JS.ReturnStatement(buildSequence(body)),
-            ])
+            body.length ? transform(body[0]) : JS.BlockStatement([])
         ),
     Arg: ({ value }, index) =>
         JS.ObjectProperty(JS.StringLiteral(index), transform(value)),
@@ -65,45 +60,6 @@ const transform = match({
 }, (tag) => {
     throw new Error(`Unknown AST node ${tag.type}`)
 })
-
-// converts @keyword blocks into continuation-passing style
-const buildSequence = pipe([
-    ([head, ...tail]) => [head, tail],
-    Either.right,
-    Either.filterm(([{ type }]) => type === 'Keyword'),
-    // if not keyword
-    Either.mapLeft(([head]) => transform(head)),
-    // otherwise ...
-    Either.fmap(([{ keyword, assignment, value }, tail]) => [
-        transform(keyword),
-        transform(value),
-        assignment
-            ? transform(quote(assignment))
-            : JS.NullLiteral(),
-        tail.length
-            ? JS.ArrowFunctionExpression(
-                assignment
-                    ? [ident(assignment.value)]
-                    : [],
-                JS.BlockStatement([
-                    JS.ReturnStatement(buildSequence(tail)),
-                ])
-            ) : null,
-    ]),
-    Either.fmap((args) => args.filter((x) => x)),
-    Either.fmap((args) => runtimeMethod('keyword', args)),
-    Either.unwrap,
-])
-
-const runtimeMethod = (methodName, args) =>
-    JS.CallExpression(
-        JS.MemberExpression(
-            JS.Identifier('CRITTER'),
-            JS.Identifier(methodName),
-            false
-        ),
-        args
-    )
 
 const reservedJSWords = new Set([
     'null', 'undefined', 'true', 'false',

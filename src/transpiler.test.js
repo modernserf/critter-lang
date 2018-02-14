@@ -1,11 +1,11 @@
 import fs from 'fs'
 import { parse } from './parser'
 import { compile } from './compiler'
+import { expand } from './expander'
+import { pipe } from './util'
 const runtimeText = fs.readFileSync('./src/runtime.js')
 
-const compose = (f, g) => (x) => f(g(x))
-
-const transpile = compose(compile, parse)
+const transpile = pipe([parse, expand, compile])
 
 it('transpiles number literals', () => {
     expect(transpile('123')).toEqual('123')

@@ -1,7 +1,7 @@
 import { id, match } from './util'
-import { tags, parse } from './parser'
+import { tags } from './parser'
 
-const expand = match({
+export const expand = match({
     Program: ({ body }) =>
         tags.Program([singleExpression(body)]),
     Number: id,
@@ -45,7 +45,7 @@ function checkDuplicateNamedArgs (args) {
 function singleExpression (body) {
     const rev = body.slice(0).reverse()
     const init = (rev[0].type === 'Keyword')
-        ? tags.FnExp([], [])
+        ? tags.Record([tags.Arg(tags.String('ok'))])
         : expand(rev.shift())
 
     return rev.reduce((after, bef) => bef.type === 'Keyword'
@@ -62,41 +62,3 @@ function expandKeyword (kw, value, next, assignment) {
             [next])),
     ])
 }
-
-it('is idempotent on simple values', () => {
-    const x = parse('123')
-    expect(expand(x)).toEqual(x)
-    const y = parse('#foo')
-    expect(expand(y)).toEqual(y)
-    const z = parse('[foo: 1 bar: 2]::bar')
-    expect(expand(z)).toEqual(z)
-})
-
-it('throws on duplicate fields', () => {
-    expect(() => {
-        expand(parse('[foo: 1 foo: 2]'))
-    }).toThrow()
-})
-
-it('expands sequences into callbacks', () => {
-    expect(
-        expand(parse(`
-            {
-                @let x := 1
-                @let y := 2
-                side-effect(x y)
-                z
-            }
-        `))
-    ).toEqual(parse(`
-        {
-            let(1 (x){
-                let(2 (y){
-                    do(side-effect(x y) {
-                        z
-                    })
-                })
-            })
-        }
-    `))
-})

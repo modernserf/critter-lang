@@ -1,9 +1,13 @@
 import { tags } from './parser'
-import { compile } from './compiler'
+import { compile as c } from './compiler'
+import { expand } from './expander'
+import { pipe } from './util'
 const {
     FieldGet, Record, FnExp, FnCall, Arg, NamedArg, Keyword,
     Number: Num, String: Str, Ident,
 } = tags
+
+const compile = pipe([expand, c])
 
 it('compiles number literals', () => {
     expect(compile(Num(123)))
@@ -71,9 +75,7 @@ it('compiles function expression with no args', () => {
         Ident('x'),
     ])
     expect(compile(prog)).toEqual([
-        `() => {`,
-        `  return x;`,
-        `}`,
+        `() => x`,
     ].join('\n'))
 })
 
@@ -92,12 +94,10 @@ it('compiles function expression with args', () => {
     expect(compile(prog)).toEqual([
         `({`,
         `  0: x`,
-        `}) => {`,
-        `  return _43({`,
-        `    0: x,`,
-        `    1: 1`,
-        `  });`,
-        `}`,
+        `}) => _43({`,
+        `  0: x,`,
+        `  1: 1`,
+        `})`,
     ].join('\n'))
 })
 
@@ -119,9 +119,12 @@ it('compiles single keywords', () => {
     ])
 
     expect(compile(prog)).toEqual([
-        `() => {`,
-        `  return CRITTER.keyword(foo, bar, null);`,
-        `}`,
+        `() => foo({`,
+        `  0: bar,`,
+        `  1: () => ({`,
+        `    0: "ok"`,
+        `  })`,
+        `})`,
     ].join('\n'))
 })
 
@@ -133,13 +136,13 @@ it('compiles a sequence of keywords', () => {
     ])
 
     expect(compile(prog)).toEqual([
-        `() => {`,
-        `  return CRITTER.keyword(foo, bar, null, () => {`,
-        `    return CRITTER.keyword(baz, quux, null, () => {`,
-        `      return snerf;`,
-        `    });`,
-        `  });`,
-        `}`,
+        `() => foo({`,
+        `  0: bar,`,
+        `  1: () => baz({`,
+        `    0: quux,`,
+        `    1: () => snerf`,
+        `  })`,
+        `})`,
     ].join('\n'))
 })
 
@@ -152,15 +155,13 @@ it('compiles keyword assignments', () => {
     ])
 
     expect(compile(prog)).toEqual([
-        `() => {`,
-        `  return CRITTER.keyword(foo, bar, {`,
-        `    0: "Ident",`,
-        `    1: "x"`,
-        `  }, x => {`,
-        `    return inc({`,
-        `      0: x`,
-        `    });`,
-        `  });`,
-        `}`,
+        `() => foo({`,
+        `  0: bar,`,
+        `  1: ({`,
+        `    0: x`,
+        `  }) => inc({`,
+        `    0: x`,
+        `  })`,
+        `})`,
     ].join('\n'))
 })
