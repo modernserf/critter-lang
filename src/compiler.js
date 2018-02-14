@@ -55,7 +55,10 @@ const transform = match({
             true
         ),
     Keyword: () => {
-        throw new Error('Keyword must be compiled in function or program context')
+        throw new Error('Keyword not supported, compiler expects expanded AST')
+    },
+    DotFnCall: () => {
+        throw new Error('DotFnCall not supported, compiler expects expanded AST')
     },
 }, (tag) => {
     throw new Error(`Unknown AST node ${tag.type}`)

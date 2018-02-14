@@ -1,6 +1,6 @@
 import { expr, tags } from './parser'
 const {
-    FieldGet, Record, FnExp, FnCall, Arg, NamedArg, Keyword,
+    FieldGet, Record, FnExp, FnCall, DotFnCall, Arg, NamedArg, Keyword,
     Number: Num, String: Str, Ident,
 } = tags
 
@@ -167,13 +167,12 @@ it('destructuring in function args')
 
 it('dot functions', () => {
     expect(expr(`foo.bar(baz).quux`))
-        .toEqual(FnCall(Ident('quux'), [
-            Arg(FnCall(Ident('bar'), [
-                Arg(Ident('foo')),
-                Arg(Ident('baz')),
-            ])),
-        ])
-        )
+        .toEqual(DotFnCall(Ident('quux'),
+            DotFnCall(Ident('bar'),
+                Ident('foo'),
+                [Arg(Ident('baz'))]),
+            []
+        ))
 })
 
 it('keywords', () => {
@@ -197,13 +196,13 @@ it('keyword assignment', () => {
 
 it('precedence', () => {
     expect(
-        expr('@foo::bar(baz).quux::snerf() x := xyzzy()')).toEqual(
+        expr('@foo::bar(baz).quux::snerf x := xyzzy()')).toEqual(
         Keyword(
-            FnCall(FieldGet(Ident('quux'), 'snerf'), [
-                Arg(FnCall(FieldGet(Ident('foo'), 'bar'), [
+            DotFnCall(FieldGet(Ident('quux'), 'snerf'),
+                FnCall(FieldGet(Ident('foo'), 'bar'), [
                     Arg(Ident('baz')),
-                ])),
-            ]),
+                ]),
+                []),
             Ident('x'),
             FnCall(Ident('xyzzy'), [])
         )

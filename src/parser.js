@@ -7,13 +7,6 @@ const tagSeq = (tagger) => (init, args) =>
 
 // TODO: preserve whitespace, comments,
 // original number/string format for pretty-printing?
-// TODO: separate phase to convert dotFnCall -> fnCall,
-// expand keyword -> fnExp
-// convert untagged exprs to implied `@do`
-// convert `@let [#foo x] := bar` to
-// @pre { bar::0.==(#foo) }
-// @let x := bar::1
-// checks duplicate fields (tired of handling this in type checker!)
 
 export const tags = tagConstructors([
     ['Program', 'body'],
@@ -22,6 +15,7 @@ export const tags = tagConstructors([
     ['Ident', 'value'],
     ['FieldGet', 'target', 'key'],
     ['Record', 'args'],
+    ['DotFnCall', 'callee', 'headArg', 'tailArgs'],
     ['FnCall', 'callee', 'args'],
     ['FnExp', 'params', 'body'],
     ['Arg', 'value'],
@@ -120,10 +114,7 @@ const dotFnCall = P.seq(
     P.plus(dotArgs)
 ).map(([firstArg, seq]) => seq.reduce(
     (acc, [_, ident, restArgs]) =>
-        tags.FnCall(ident, [
-            tags.Arg(acc),
-            ...restArgs,
-        ]),
+        tags.DotFnCall(ident, acc, restArgs),
     firstArg
 ))
 

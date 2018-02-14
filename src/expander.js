@@ -12,7 +12,12 @@ export const expand = match({
     Record: ({ args }) =>
         tags.Record(checkDuplicateNamedArgs(args)),
     FnCall: ({ callee, args }) =>
-        tags.FnCall(callee, checkDuplicateNamedArgs(args)),
+        tags.FnCall(expand(callee), checkDuplicateNamedArgs(args)),
+    DotFnCall: ({ callee, headArg, tailArgs }) =>
+        tags.FnCall(expand(callee), checkDuplicateNamedArgs([
+            tags.Arg(headArg),
+            ...tailArgs,
+        ])),
     FnExp: ({ params, body }) =>
         tags.FnExp(checkDuplicateNamedArgs(params), [singleExpression(body)]),
     Arg: () => {
