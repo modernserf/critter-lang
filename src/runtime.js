@@ -5,13 +5,13 @@ const CRITTER = {
         throw new Error(`KeyError: ${key}`)
     },
     keyword: (fn, value, next, assignment) =>
-        fn({ 0: value, 1: next, assignment })
+        fn({ 0: value, 1: next, assignment }),
 }
 
 const _dom = {
     ready: () => {},
     render: ({ 1: {0: f, 1: args} }) => console.log(f(args)),
-    find: () => {}
+    find: () => {},
 }
 
 const _import = (_path) => {
