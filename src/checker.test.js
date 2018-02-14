@@ -2,40 +2,38 @@ import { types, checker } from './checker'
 import { expr } from './parser'
 
 const check = (str) => checker(expr(str))
-const ok = (value) => ({ status: 'ok', value })
-const err = (...errors) => ({ status: 'error', errors })
 
 it('typechecks literals', () => {
-    expect(check('123'))
-        .toEqual(ok(types.Number()))
-    expect(check('#foo'))
-        .toEqual(ok(types.String()))
-    expect(check('[#foo 123]'))
-        .toEqual(ok(types.Record([
+    check('123').then((val) =>
+        expect(val).toEqual(types.Number()))
+    check('#foo').then((val) =>
+        expect(val).toEqual(types.String()))
+    check('[#foo 123]').then((val) =>
+        expect(val).toEqual(types.Record([
             types.Field(0, types.String()),
             types.Field(1, types.Number()),
         ])))
 })
 
 it('typechecks field access', () => {
-    expect(check('[#foo]::0'))
-        .toEqual(ok(types.String()))
-    expect(check('[foo: 1 bar: "bar"]::foo'))
-        .toEqual(ok(types.Number()))
-    expect(check('#foo::0'))
-        .toEqual(err('cannot_get_field_on', 'String'))
-    expect(check('[#foo]::1'))
-        .toEqual(err('missing_field', 1))
+    check('[#foo]::0').then((val) =>
+        expect(val).toEqual(types.String()))
+    check('[foo: 1 bar: "bar"]::foo').then((val) =>
+        expect(val).toEqual(types.Number()))
+    check('#foo::0').catch((err) =>
+        expect(err).toEqual(['cannot_get_field_on', 'String']))
+    check('[#foo]::1').catch((err) =>
+        expect(err).toEqual(['missing_field', 1]))
 })
 
 it('fails unknown idents', () => {
-    expect(check('foo'))
-        .toEqual(err('unknown_ident', 'foo'))
+    check('foo').catch((err) =>
+        expect(err).toEqual(['unknown_ident', 'foo']))
 })
 
 it('typechecks fn definitions', () => {
-    expect(check('{ #foo }'))
-        .toEqual(ok(types.Function([], types.String())))
+    check('{ #foo }').then((val) =>
+        expect(val).toEqual(types.Function([], types.String())))
 
     const res = check('(x){ x }').value
     expect(res.type).toEqual('Function')
@@ -43,20 +41,34 @@ it('typechecks fn definitions', () => {
         .toEqual(res.returns)
 })
 
-it('infers types from usage', () => {
-    const res = check(`(x){ x::foo }`).value
+it('infers types from field access', () => {
+    const res = check(`(x){ [x::foo x::bar] }`).value
     expect(res.type).toEqual('Function')
     expect(res.params[0].value.type).toEqual('Product')
     expect(res.params[0].value.members[0].key).toEqual('foo')
+    expect(res.params[0].value.members[1].key).toEqual('bar')
 })
-// expect(check(`(x){ (y z){ [y::0 z::1] }(x x) }`))
-//     .toEqual(ok(types.Function({
-//         0: types.PartialRecord({
-//             0: types.Var(),
-//             1: types.Var(),
-//         }),
-//     }, types.Record({
-//         0: types.Var(),
-//         1: types.Var(),
-//     }))))
-// })
+
+it('infers types from function calls', () => {
+    const res = check(`(x){ (y){ [y::foo y::bar] }(x) }`).value
+    expect(res.type).toEqual('Function')
+    expect(res.params[0].value.type).toEqual('Product')
+    expect(res.params[0].value.members[0].key).toEqual('foo')
+    expect(res.params[0].value.members[1].key).toEqual('bar')
+    expect(res.returns.type).toEqual('Record')
+    expect(res.returns.members.length).toEqual(2)
+})
+
+it('tracks functions as values', () => {
+    const res = check(`(x){
+        (f){
+            f(x x)
+        }((a b){ [a::foo b::bar] })
+    }`).value
+    expect(res.type).toEqual('Function')
+    expect(res.params[0].value.type).toEqual('Product')
+    expect(res.params[0].value.members[0].key).toEqual('foo')
+    expect(res.params[0].value.members[1].key).toEqual('bar')
+    expect(res.returns.type).toEqual('Record')
+    expect(res.returns.members.length).toEqual(2)
+})

@@ -5,11 +5,15 @@ const ok = (value, scope) => ({
     value,
     scope,
     then: (f) => f(value, scope),
+    map: (f) => ok(f(value), scope),
+    catch () { return this },
 })
 const err = (...errors) => ({
     status: 'error',
     errors,
     then () { return this },
+    map () { return this },
+    catch: (f) => f(errors),
 })
 
 export const types = tagConstructors([
@@ -23,6 +27,19 @@ export const types = tagConstructors([
     ['Sum', 'members'],
 ])
 
+const traverse = (xs, scope, f) => xs.reduce(
+    (chain, x, i) => chain.then((acc, scope) =>
+        f(x, i, scope).map((x) => {
+            acc.push(x)
+            return acc
+        })
+    ), ok([], scope))
+
+const traverseArgs = (args, prevScope) =>
+    traverse(args, prevScope, ({ key, value }, i, scope) =>
+        check(value, scope)
+            .map((value) => types.Field(key || i, value)))
+
 const check = match({
     Number: (_, scope) => ok(types.Number(), scope),
     String: (_, scope) => ok(types.String(), scope),
@@ -33,15 +50,8 @@ const check = match({
             : err('unknown_ident', value),
 
     Record: ({ args }, prevScope) =>
-        args.reduce((chain, { key, value }, i) =>
-            chain.then((args, scope) =>
-                check(value, scope).then((value, scope) => {
-                    args.push(types.Field(key || i, value))
-                    return ok(args, scope)
-                })
-            ), ok([], prevScope)
-        ).then((fields, scope) =>
-            ok(types.Record(fields), scope)),
+        traverseArgs(args, prevScope).map((fields) =>
+            types.Record(fields)),
 
     FieldGet: ({ target, key }, prevScope) => {
         return check(target, prevScope).then((tgt, scope) => {
@@ -59,6 +69,21 @@ const check = match({
                 : err('missing_field', key)
         })
     },
+
+    FnCall: ({ callee, args }, scope) =>
+        check(callee, scope).then((callee, scope) =>
+            traverseArgs(args, scope)
+                .map((args) => ({ callee, args }))
+        ).then(({ callee, args }, scope) => {
+            const val = Symbol('fn_call')
+            const nextScope = unify(
+                callee,
+                types.Function(args, val),
+                scope)
+            return nextScope
+                ? ok(lookup(nextScope, val), nextScope)
+                : err('fail_fn_call')
+        }),
 
     // TODO: body should be single expr, not lines
     FnExp: ({ params, body: [body] }, parentScope) => {
@@ -114,8 +139,34 @@ function unify (l, r, scope) {
             }
             return scope
         }
+        case 'Function': {
+            scope = unify(l.returns, r.returns, scope)
+            if (!scope) { return null }
+            if (l.params.length !== r.params.length) { return null }
+            for (let key in l.params) {
+                scope = unify(l.params[key], r.params[key], scope)
+                if (!scope) { return null }
+            }
+            return scope
+        }
         case 'Product': {
-            // union of l and r
+            for (let key in l.members) {
+                const nextScope = unify(l.members[key], r.members[key], scope)
+                if (nextScope) {
+                    scope = nextScope
+                } else {
+                    // TODO: this really doesnt seem right
+                    r.members.push(l.members[key])
+                }
+            }
+            for (let key in r.members) {
+                const nextScope = unify(l.members[key], r.members[key], scope)
+                if (nextScope) {
+                    scope = nextScope
+                } else {
+                    l.members.push(r.members[key])
+                }
+            }
             return scope
         }
         }
@@ -147,6 +198,5 @@ function unifyRecord (record, other, scope) {
 }
 
 const rootScope = {}
-const clean = (x) => { delete x.then; delete x.scope; return x }
 
-export const checker = (ast) => clean(check(ast, rootScope))
+export const checker = (ast) => check(ast, rootScope)

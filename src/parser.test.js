@@ -209,3 +209,27 @@ it('precedence', () => {
         )
     )
 })
+
+it('parses deeply nested let bindings', () => {
+    expect(
+        expr(`(x){
+            (f){
+                f(x x)
+            }((a b){ [a::foo b::bar] })
+        }`)
+    ).toEqual(
+        FnExp([Arg(Ident('x'))], [
+            FnCall(
+                FnExp([Arg(Ident('f'))], [
+                    FnCall(Ident('f'), [Arg(Ident('x')), Arg(Ident('x'))]),
+                ]), [Arg(
+                    FnExp([Arg(Ident('a')), Arg(Ident('b'))], [
+                        Record([
+                            Arg(FieldGet(Ident('a'), 'foo')),
+                            Arg(FieldGet(Ident('b'), 'bar')),
+                        ]),
+                    ])
+                )]),
+        ])
+    )
+})
