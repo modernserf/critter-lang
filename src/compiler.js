@@ -1,59 +1,28 @@
-import generate from '@babel/generator'
 import { pipe, tagConstructors, match } from './util'
-
-const JS = tagConstructors([
-    ['NumericLiteral', 'value'],
-    ['StringLiteral', 'value'],
-    ['Identifier', 'name'],
-    ['UnaryExpression', 'operator', 'argument', 'prefix'],
-    ['ObjectExpression', 'properties'],
-    ['CallExpression', 'callee', 'arguments'],
-    ['FunctionExpression', 'params', 'body'],
-    ['ArrowFunctionExpression', 'params', 'body'],
-    ['BlockStatement', 'body'],
-    ['ReturnStatement', 'argument'],
-    ['ObjectProperty', 'key', 'value'],
-    ['MemberExpression', 'object', 'property', 'computed'],
-    ['NullLiteral'],
-])
 
 const oneItem = (f, xs) => xs.length ? [f(xs)] : []
 
-const transform = match({
-    Program: ({ body }) => transform(body[0]),
-    Number: ({ value }) =>
-        value >= 0
-            ? JS.NumericLiteral(value)
-            : JS.UnaryExpression('-', JS.NumericLiteral(-value), true),
-    String: ({ value }) =>
-        JS.StringLiteral(value),
-    Ident: ({ value }) =>
-        ident(value),
-    Record: ({ args }) =>
-        JS.ObjectExpression(args.map(transform)),
+export const compile = match({
+    Program: ({ body }) => compile(body[0]),
+    Number: ({ value }) => value.toString(),
+    String: ({ value }) => quote(value),
+    Ident: ({ value }) => ident(value),
+    Record: ({ args }) => obj(args),
     FnCall: ({ callee, args }) =>
-        JS.CallExpression(transform(callee), [
-            JS.ObjectExpression(args.map(transform)),
-        ]),
-    FnExp: ({ params, body }) =>
-        JS.ArrowFunctionExpression(
-            oneItem(
-                (xs) => JS.ObjectExpression(xs.map(transform)),
-                params),
-            body.length ? transform(body[0]) : JS.BlockStatement([])
-        ),
+        `${compile(callee)}${obj(args)}`,
+    FnExp: ({ params, body }) => {
+        const head = params.length ? obj(params) : `()`
+        const tail = body.length ? compile(body[0]) : `{}`
+        return `${head} => ${tail}`
+    },
     Arg: ({ value }, index) =>
-        JS.ObjectProperty(JS.StringLiteral(index), transform(value)),
+        `${index}: ${compile(value)}`,
     NamedArg: ({ key, value }) =>
-        JS.ObjectProperty(JS.StringLiteral(key), transform(value)),
+        `${quote(key)}: ${compile(value)}`,
     FieldGet: ({ target, key }) =>
-        JS.MemberExpression(
-            transform(target),
-            typeof key === 'string'
-                ? JS.StringLiteral(key)
-                : JS.NumericLiteral(key),
-            true
-        ),
+        `${compile(target)}[${
+            typeof key === 'string' ? quote(key) : key
+        }]`,
     Keyword: () => {
         throw new Error('Keyword not supported, compiler expects expanded AST')
     },
@@ -89,6 +58,8 @@ const escapeReservedWords = (name) => reservedJSWords.has(name)
     ? `_${name}`
     : name
 
-const ident = pipe([escapeChars, escapeReservedWords, JS.Identifier])
+const ident = pipe([escapeChars, escapeReservedWords])
 
-export const compile = pipe([transform, generate, (x) => x.code])
+const quote = (s) => `"${s.replace(/"/g, `\\"`)}"`
+
+const obj = (fields) => `({ ${fields.map(compile).join(', ')} })`

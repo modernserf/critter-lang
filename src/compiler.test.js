@@ -42,14 +42,9 @@ it('compiles records', () => {
         NamedArg('snerf', Ident('snerf')),
     ])
 
-    expect(compile(prog)).toEqual([
-        '{',
-        '  0: bar,',
-        `  1: "baz",`,
-        `  "quux": 123.45,`,
-        `  "snerf": snerf`,
-        '}',
-    ].join('\n'))
+    expect(compile(prog)).toEqual(
+        `({ 0: bar, 1: "baz", "quux": 123.45, "snerf": snerf })`
+    )
 })
 
 it('compiles function calls', () => {
@@ -60,23 +55,15 @@ it('compiles function calls', () => {
         NamedArg('snerf', Ident('snerf')),
     ])
 
-    expect(compile(prog)).toEqual([
-        `foo({`,
-        `  0: bar,`,
-        `  1: "baz",`,
-        `  "quux": 123.45,`,
-        `  "snerf": snerf`,
-        `})`,
-    ].join('\n'))
+    expect(compile(prog)).toEqual(
+        `foo({ 0: bar, 1: "baz", "quux": 123.45, "snerf": snerf })`)
 })
 
 it('compiles function expression with no args', () => {
     const prog = FnExp([], [
         Ident('x'),
     ])
-    expect(compile(prog)).toEqual([
-        `() => x`,
-    ].join('\n'))
+    expect(compile(prog)).toEqual(`() => x`)
 })
 
 it('compiles function expression with args', () => {
@@ -91,14 +78,8 @@ it('compiles function expression with args', () => {
 
     // TODO: how will shadowing work? are the scope rules close enough
     // that it will work "automatically"?
-    expect(compile(prog)).toEqual([
-        `({`,
-        `  0: x`,
-        `}) => _43({`,
-        `  0: x,`,
-        `  1: 1`,
-        `})`,
-    ].join('\n'))
+    expect(compile(prog)).toEqual(
+        `({ 0: x }) => _43({ 0: x, 1: 1 })`)
 })
 
 it('compiles field access', () => {
@@ -118,14 +99,8 @@ it('compiles single keywords', () => {
         Keyword(Ident('foo'), null, Ident('bar')),
     ])
 
-    expect(compile(prog)).toEqual([
-        `() => foo({`,
-        `  0: bar,`,
-        `  1: () => ({`,
-        `    0: "ok"`,
-        `  })`,
-        `})`,
-    ].join('\n'))
+    expect(compile(prog)).toEqual(
+        `() => foo({ 0: bar, 1: () => ({ 0: "ok" }) })`)
 })
 
 it('compiles a sequence of keywords', () => {
@@ -135,15 +110,8 @@ it('compiles a sequence of keywords', () => {
         Ident('snerf'),
     ])
 
-    expect(compile(prog)).toEqual([
-        `() => foo({`,
-        `  0: bar,`,
-        `  1: () => baz({`,
-        `    0: quux,`,
-        `    1: () => snerf`,
-        `  })`,
-        `})`,
-    ].join('\n'))
+    expect(compile(prog)).toEqual(
+        `() => foo({ 0: bar, 1: () => baz({ 0: quux, 1: () => snerf }) })`)
 })
 
 it('compiles keyword assignments', () => {
@@ -154,14 +122,6 @@ it('compiles keyword assignments', () => {
         ]),
     ])
 
-    expect(compile(prog)).toEqual([
-        `() => foo({`,
-        `  0: bar,`,
-        `  1: ({`,
-        `    0: x`,
-        `  }) => inc({`,
-        `    0: x`,
-        `  })`,
-        `})`,
-    ].join('\n'))
+    expect(compile(prog)).toEqual(
+        `() => foo({ 0: bar, 1: ({ 0: x }) => inc({ 0: x }) })`)
 })

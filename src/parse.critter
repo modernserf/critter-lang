@@ -1,0 +1,114 @@
+; TODO: this might do somethign useful?
+@let parse := (p input index){ p(input index) }
+
+@let result := (vals index){ ok([vals index]) }
+@let fail := (err index){ error([err index]) }
+
+@let never := (_ i){ fail(#never-matches i) }
+@let always := (value){ (_ i){ result(value i) } }
+
+@let ^ := (_ i){
+    i.==(0).cond({
+        result([] i)
+    } {
+        fail(#expected-start-of-input i)
+    })
+}
+
+@let $ := (input i){
+    input.length.==(i).cond({
+        result([] i)
+    } {
+        fail(#expected-end-of-input i)
+    })
+}
+
+@let any := (input i){
+    input.get(i).cond((value){
+        result([value] i.++)
+    } {
+        fail(#unexpected-end-of-input i)
+    })
+}
+
+@let match := (matcher){ (input i){
+    any(input i).then(([[val] i]){
+        matcher(val).cond({
+            result([val] i)
+        } {
+            fail(#no-match i.--)
+        })
+    })
+} }
+
+@let eq = (value){ match((x){ x.==(value) }) }
+
+; alt
+@let | := (l r){ (input i){
+    l.parse(input i).else({ r.parse(input i) })
+} }
+
+; seq
+@let , := (l r){ (input i){
+    l.parse(input i).then(([val1 i1]){
+        r.parse(input i1).then(([val2 i2]){
+            result(val1.concat(val2) i2)
+        })
+    })
+} }
+
+; match 0 or more
+@let * := (p){ (input init-i){
+    loop::run([[] init-i] ([coll i]){
+        p.parse(input i)
+            .cond(([val next-i]){
+                @do assert(
+                    i.!=(next-i)
+                    "`*` cannot be used with a parser that does not consume input"
+                loop::recur([coll.concat(val) next-i])
+            } {
+                loop::done(result(coll i))
+            })
+    })
+} }
+
+; match 1 or more
+@let + := (p){ p.,(p.*) }
+
+@let _nothing := always([])
+
+; match 0 or 1
+@let ? := (p){ p.|(_nothing) }
+
+; match if p does not match; does not consume input
+@let ~ := (p){ (input i){
+    p.parse(input i).cond({
+        fail(#should-not-match i)
+    } {
+        result([] i)
+    })
+} }
+
+@let code-point-at := (str index){
+    JS::apply(str::codePointAt [index] this: str)
+}
+@let range := (start end){
+    @let start-code := start.code-point-at(0)
+    @let end-code :=  end.code-point-at(0)
+    match((value){
+        @let c := value.code-point-at(0)
+        start-code.<=(c).<=(end-code)
+    })
+}
+
+@let digit := range("0" "9")
+@let uppercase := range(#A #Z)
+@let lowercase := range(#a #z)
+@let letter := uppercase.|(lowercase)
+
+@let space := " "
+@let tab := "   "
+@let newline := "
+"
+
+@let whitespace := [space tab newline].map(eq).fold1(|)
