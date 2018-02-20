@@ -1,10 +1,3 @@
-; basics
-@let log := (x){
-    JS::apply(
-        JS::global::console
-        x
-        this: JS::global::console)
-    }
 @let die := (message){ JS::throw(message) }
 
 @let id := (x){ x }
@@ -41,50 +34,55 @@
 }
 
 @let ref-equal? := (l r){
-    JS::===(l r).bool?(l err(#not-equal))
+    JS::===(l r).bool?(l error(#not-equal))
 }
 
+; Either a b , (a -> Either c d) , (b -> Either c d) -> Either c d
 @let cond := (maybe if-ok if-err){
-    JS::===(maybe.tag #ok).JS::?(
-        if-ok(maybe.unwrap)
-        if-err(maybe.unwrap)
-    )
-}
-
-@let then := (m if-ok){ m.cond(if-ok id) }
-@let else := (m if-err){ m.cond(id if-err) }
-@let or := (l r){ l.cond(id { r }) }
-@let and := (l r){ l.then({ r }) }
-
-; not swaps the ok & error tags
-@let not := (x){ x.cond(err ok) }
-
-; wrap m in #ok if its not already wrapped
-@let flat-ok := (m){
-    m.get(0).cond((key){
-        ref-equal?(key #ok)
-            .or(ref-equal?(key #error))
-            .else({ ok(m) })
-    } {
-        ok(m)
-    })
+    @let f := JS::===(maybe.tag #ok)
+        .JS::?(if-ok if-err)
+    f(maybe.unwrap)
 }
 
 ; control flow (use as `@do` `@try` `@guard`)
 ; crash if m is error
 @let do := (m next){ m.cond(next die) }
 
+@let then := (m if-ok){ m.cond(if-ok error) }
+@let else := (m if-err){ m.cond(ok if-err) }
+@let or := (l r){ l.else({ r }) }
+@let and := (l r){ l.then({ r }) }
+
+; not swaps the ok & error tags
+@let not := (x){ x.cond(error ok) }
+
+@let record? := (r){
+    and(
+        not(ref-equal?(r JS::null))
+        ref-equal?(JS::typeof(r) #object)
+    ).then({ ok(r) })
+}
+
+; wrap m in #ok if its not already wrapped
+@let flat-ok := (m){
+    m.record?.cond({
+        m.get(0).cond((key){
+            ref-equal?(key #ok)
+                .or(ref-equal?(key #error))
+                .else({ ok(m) })
+        } {
+            ok(m)
+        })
+    } {
+        ok(m)
+    })
+}
+
+
 ; block returns err if m is error
 @let try := (m next){ m.then((x){ x.next.flat-ok }) }
 ; block returns ok if m is not error
 @let guard := (m next){ m.else((x){ x.next.flat-ok }) }
-
-@let record? := (r){
-    and(
-        not(ref-equal(r JS::null))
-        ref-equal?(JS::typeof(r) #object)
-    ).then({ ok(r) })
-}
 
 @let keys := (r){ JS::global::Object::keys(r) }
 

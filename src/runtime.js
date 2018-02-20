@@ -20,6 +20,7 @@ const JS = {
         return arr
     },
     global: _global,
+    log: (args) => console.log(JS.Array({ 0: args })),
     '==': ({ 0: x, 1: y }) => x == y, // eslint-disable-line eqeqeq
     '===': ({ 0: x, 1: y }) => x === y,
     '!=': ({ 0: x, 1: y }) => x != y, // eslint-disable-line eqeqeq

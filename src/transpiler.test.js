@@ -30,3 +30,28 @@ it('throws errors', () => {
         run(`die("a custom message")`)
     }).toThrow(new Error('a custom message'))
 })
+
+it('has conditionals', () => {
+    expect(run(`ok(3).cond((val){ val } { #error })`)).toEqual(3)
+})
+
+it('has "safe" field access', () => {
+    expect(run(`[#foo #bar].get(0)`))
+        .toEqual(run(`ok(#foo)`))
+})
+
+it('has the @try construct', () => {
+    expect(run(`
+        @let f := {
+            @let x := #bar
+            @try value := ok(#foo)
+            x
+        }
+        f()
+    `)).toEqual(run(`ok(#bar)`))
+})
+
+it('has structural equality', () => {
+    expect(run(`==(#foo #foo).then(id)`))
+        .toEqual(run(`#foo`))
+})
