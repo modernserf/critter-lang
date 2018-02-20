@@ -1,5 +1,5 @@
 import { tokenize } from './lexer'
-import { tagConstructors, spread, flatten } from './util'
+import { tagConstructors, spread } from './util'
 import * as P from './combinators'
 
 const tagSeq = (tagger) => (init, args) =>
@@ -47,12 +47,13 @@ const _ = P.all(space)
 const __ = P.plus(space)
 const doublePad = (p) => P.wrapped(P.sepBy(p, __), _)
 
-const namedArg = P.lazy(() =>
-    P.seq(ident, token('Colon'), _, expression)
+const createArgsFor = (expr) => {
+    const namedArg = P.seq(ident, token('Colon'), _, expr)
         .map(([key, _, __, value]) => tags.NamedArg(key, value))
-)
-const indexArg = P.lazy(() => expression.map(tags.Arg))
-const arg = P.alt(namedArg, indexArg)
+    const indexArg = expr.map(tags.Arg)
+    return P.alt(namedArg, indexArg)
+}
+const arg = P.lazy(() => createArgsFor(expression))
 
 const record = P.wrapped(doublePad(arg), token('LBrk'), token('RBrk'))
     .map(tags.Record)
@@ -65,19 +66,24 @@ const fieldGet = P.seq(
     P.alt(record, terminal), P.plus(field)
 ).map(spread(tagSeq(tags.FieldGet)))
 
-// TODO: destructuring
-const binding = P.alt(
-    ident.map(tags.Ident)
-)
-
-const namedBindArg = P.seq(ident, token('Colon'), _, binding)
-    .map(([key, _, __, value]) => tags.NamedArg(key, value))
-
+// binding (includes destructuring)
+// pattern-match on identifiers, primitives,
+// and records composed of bindings
+// includes punning of `[foo: foo]` as `[::foo]`
+// TODO: expand "punning" in expander, not here
+const _bindArg = P.lazy(() => createArgsFor(binding))
 const punArg = P.seq(token('FieldOp'), ident)
     .map(([_, key]) => tags.NamedArg(key, tags.Ident(key)))
+const bindArg = P.alt(_bindArg, punArg)
 
-const indexBindArg = binding.map(tags.Arg)
-const bindArg = P.alt(namedBindArg, punArg, indexBindArg)
+const bindRecord = P.wrapped(doublePad(bindArg), token('LBrk'), token('RBrk'))
+
+const binding = P.alt(
+    bindRecord.map(tags.Record),
+    number.map(tags.Number),
+    string.map(tags.String),
+    ident.map(tags.Ident)
+)
 
 const fnParams = P.wrapped(
     doublePad(bindArg),

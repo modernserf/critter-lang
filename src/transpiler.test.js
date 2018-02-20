@@ -1,6 +1,6 @@
 import { transpile } from './transpiler'
 
-const run = (text) => eval(transpile(text))
+const run = (text) => eval(transpile(text)) // eslint-disable-line no-eval
 
 it('transpiles literals', () => {
     expect(run('123')).toEqual(123)
@@ -49,9 +49,60 @@ it('has the @try construct', () => {
         }
         f()
     `)).toEqual(run(`ok(#bar)`))
+
+    expect(run(`
+        @let f := {
+            @let x := #bar
+            @try value := error(#foo)
+            x
+        }
+        f()
+    `)).toEqual(run(`error(#foo)`))
+
+    expect(run(`
+        @let f := {
+            @let x := #bar
+            @try value := ok(#foo)
+            error(value)
+        }
+        f()
+    `)).toEqual(run(`error(#foo)`))
+})
+
+it('has fn interop', () => {
+    const res = run(`JS::fn((x y){ [x y] })`)('foo', 'bar')
+    expect(res).toEqual(run(`[#foo #bar]`))
+})
+
+it('has folds', () => {
+    expect(run(`
+        [1 2 3].fold((l r){ [head: r tail: l] } [])
+    `)).toEqual(run(`[head: 3 tail: [head: 2 tail: [head: 1 tail: []]]]`))
+})
+
+it('has keys', () => {
+    expect(run(`
+        @let x := [#foo #bar baz: #baz]
+        x.keys.chain((_ key){ x.get(key) } ok(#init))
+    `)).toEqual(run(`ok(#baz)`))
 })
 
 it('has structural equality', () => {
-    expect(run(`==(#foo #foo).then(id)`))
-        .toEqual(run(`#foo`))
+    expect(run(`==(#foo #foo)`))
+        .toEqual(run(`ok(#foo)`))
+    expect(run(`==([#foo 1] [#foo 1])`))
+        .toEqual(run(`ok([#foo 1])`))
+})
+
+it('has pattern matching', () => {
+    expect(run(`[#foo 3].match([
+        ; doesn't match format
+        ([#bar x]){ ok([x]) }
+        ; fails in body
+        ([#foo x]){ x.==(2).then({ ok([x x]) }) }
+        ; succeeds
+        ([#foo x]){ ok([x x x]) }
+        ; should not occur
+        { ok(#default-value) }
+    ])`)).toEqual(run(`ok([3 3 3])`))
 })

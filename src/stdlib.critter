@@ -2,18 +2,18 @@
 
 @let id := (x){ x }
 
+; TODO: is this "enough" or does this limit to single recursion?
+@let letrec := (f next){ next(f(f(f))) }
+
 ; equality & comparison
 ; critter APIs doesn't use boolean values,
 ; instead, it extensively uses [#ok value] [#err error]
 ; with pattern matching
 
-; TODO: prototypes
-@let Either := []
-@let Ok := [proto: Either]
-@let Error := [proto: Either]
+; TODO: identify ok/error with Either prototype, not tag
 
-@let ok := (value){ [#ok value proto: Ok] }
-@let error := (err){ [#err err proto: Error] }
+@let ok := (value){ [#ok value] }
+@let error := (err){ [#err err] }
 @let tag := (m){ m::0 }
 @let unwrap := (m){ m::1 }
 @let bool? := (bool if-true if-false){
@@ -44,10 +44,6 @@
     f(maybe.unwrap)
 }
 
-; control flow (use as `@do` `@try` `@guard`)
-; crash if m is error
-@let do := (m next){ m.cond(next die) }
-
 @let then := (m if-ok){ m.cond(if-ok error) }
 @let else := (m if-err){ m.cond(ok if-err) }
 @let or := (l r){ l.else({ r }) }
@@ -65,29 +61,27 @@
 
 ; wrap m in #ok if its not already wrapped
 @let flat-ok := (m){
-    m.record?.cond({
-        m.get(0).cond((key){
-            ref-equal?(key #ok)
-                .or(ref-equal?(key #error))
-                .else({ ok(m) })
-        } {
-            ok(m)
-        })
-    } {
-        ok(m)
-    })
+    @let inner := {
+        @then m.record?
+        @then key := m.get(0)
+        ref-equal?(key #ok).or(ref-equal?(key #err))
+    }
+
+    inner().cond({ m } { ok(m) })
 }
 
-
+; control flow (use as `@do` `@try` `@guard`)
+; crash if m is error
+@let do := (m next){ m.cond(next die) }
 ; block returns err if m is error
 @let try := (m next){ m.then((x){ x.next.flat-ok }) }
 ; block returns ok if m is not error
 @let guard := (m next){ m.else((x){ x.next.flat-ok }) }
 
-@let keys := (r){ JS::global::Object::keys(r) }
+@let keys := (r){ JS::apply(JS::global::Object::keys [r]) }
 
 @let fold := (record reducer init){
-    @let arr := JS::global::Object::values(record)
+    @let arr := JS::apply(JS::global::Object::values [record])
     JS::apply(arr::reduce [JS::fn(reducer) init] this: arr)
 }
 
@@ -99,25 +93,33 @@
 }
 
 ; structural equality
-@let == := (l r){
+@letrec == := (recur){ (l r){
     ; both are equal primitives, or
-    ref-equal?(l r).else({
-        ; both are records
-        @try l.record?
-        @try r.record?
+    @else ref-equal?(l r)
+    ; both are records
+    @then l.record?
+    @then r.record?
 
-        ; for each l key, if r has key, recur over l[key] == r[key]
-        @try l.keys.chain((_ key){
-            @try lval := l.get(key)
-            @try rval := r.get(key)
-            ==(lval rval)
-        } ok([]))
+    ; for each l key, if r has key, recur over l[key] == r[key]
+    @then l.keys.chain((_ key){
+        @then lval := l.get(key)
+        @then rval := r.get(key)
+        recur(lval rval)
+    } ok(#init))
 
-        ; verify l has key (they have already been compared)
-        r.keys.chain((_ key){ l.get(key) } ok([]))
-    })
-}
+
+    ; verify l has key (they have already been compared)
+    @then r.keys.chain((_ key){ l.get(key) } ok(#init))
+
+    ok(l)
+} }
 
 @let != := (l r){ not(==(l r)) }
 
 @let assert := (m message){ m.else({ die(message) }) }
+
+@let match := (value fs){
+    fs.fold((prev f){
+        prev.else({ f(value) })
+    } error(#no-matches-provided))
+}

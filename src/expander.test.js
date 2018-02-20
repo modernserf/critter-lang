@@ -38,3 +38,49 @@ it('expands sequences into callbacks', () => {
         }
     `))
 })
+
+it('expands pattern-matching function args into try blocks', () => {
+    expect(
+        expand(parse(`
+            (#foo 1 x){
+                x
+            }
+        `))
+    ).toEqual(parse(`
+        (_0 _1 x){
+            try(==(_0 #foo) {
+                try(==(_1 1) {
+                    x
+                })
+            })
+        }
+    `))
+})
+
+it('destructures function args', () => {
+    expect(
+        expand(parse(`
+            ([l r]){ [r l] }
+        `))
+    ).toEqual(parse(`
+        (_0){
+            let(_0::0 (l){
+                let(_0::1 (r){
+                    [r l]
+                })
+            })
+        }
+    `))
+})
+
+it('destructures and pattern matches', () => {
+    expect(expand(parse(`
+        ([#bar x]){ [x x x] }
+    `))).toEqual(expand(parse(`
+        (_0){
+            @try ==(_0::0 #bar)
+            @let x := _0::1
+            [x x x]
+        }
+    `)))
+})

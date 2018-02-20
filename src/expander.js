@@ -18,8 +18,9 @@ export const expand = match({
             tags.Arg(headArg),
             ...tailArgs,
         ])),
-    FnExp: ({ params, body }) =>
-        tags.FnExp(checkDuplicateNamedArgs(params), [singleExpression(body)]),
+    FnExp: ({ params, body }) => expandDestructuring(
+        checkDuplicateNamedArgs(params),
+        body),
     Arg: () => {
         throw new Error('Arg must be expanded in context of args')
     },
@@ -30,6 +31,62 @@ export const expand = match({
         throw new Error('Keyword must be expanded in context of body')
     },
 }, ({ type }) => { throw new Error(`Unknown AST node ${type}`) })
+
+// TODO: how can I prevent name collisions here?
+// can I have unparseable but legal variable names?
+const identNum = (i) => tags.Ident(`_${i}`)
+
+const matchLiteral = (x, binding) => ({
+    binding,
+    conditions: [
+        tags.Keyword(tags.Ident('try'), null,
+            tags.FnCall(tags.Ident('=='), [
+                tags.Arg(binding),
+                tags.Arg(x),
+            ])),
+    ],
+})
+
+const destructure = match({
+    Ident: (x) => ({ binding: x, conditions: [] }),
+    Number: matchLiteral,
+    String: matchLiteral,
+    Record: ({ args }, binding) => ({
+        binding,
+        conditions: args.reduce((coll, arg, j) => {
+            const childBinding = tags.FieldGet(binding, arg.key || j)
+            if (arg.value.type === 'Ident') {
+                coll.push(
+                    tags.Keyword(
+                        tags.Ident('let'),
+                        arg.value,
+                        childBinding,
+                    )
+                )
+            } else {
+                const child = destructure(arg.value, childBinding)
+                coll.push(...child.conditions)
+            }
+            return coll
+        }, []),
+    }),
+})
+
+function expandDestructuring (params, body) {
+    const bodyWithConditions = []
+    const boundParams = []
+    for (const [i, param] of params.entries()) {
+        const { binding, conditions } = destructure(param.value, identNum(i))
+        const nextParam = { ...param, value: binding }
+        boundParams.push(nextParam)
+        bodyWithConditions.push(...conditions)
+    }
+    bodyWithConditions.push(...body)
+
+    return tags.FnExp(boundParams, [
+        singleExpression(bodyWithConditions),
+    ])
+}
 
 function checkDuplicateNamedArgs (args) {
     const usedNames = {}
@@ -48,12 +105,12 @@ function checkDuplicateNamedArgs (args) {
 }
 
 function singleExpression (body) {
-    const rev = body.slice(0).reverse()
-    const init = (rev[0].type === 'Keyword')
+    const copy = body.slice(0)
+    const init = (copy[copy.length - 1].type === 'Keyword')
         ? tags.Record([tags.Arg(tags.String('ok'))])
-        : expand(rev.shift())
+        : expand(copy.pop())
 
-    return rev.reduce((after, bef) => bef.type === 'Keyword'
+    return copy.reduceRight((after, bef) => bef.type === 'Keyword'
         ? expandKeyword(bef.keyword, bef.value, after, bef.assignment)
         : expandKeyword(tags.Ident('do'), bef, after),
     init)
@@ -62,7 +119,7 @@ function singleExpression (body) {
 function expandKeyword (kw, value, next, assignment) {
     return tags.FnCall(expand(kw), [
         tags.Arg(expand(value)),
-        tags.Arg(tags.FnExp(
+        tags.Arg(expandDestructuring(
             (assignment ? [tags.Arg(assignment)] : []),
             [next])),
     ])

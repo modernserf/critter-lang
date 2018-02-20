@@ -162,8 +162,18 @@ it('parses an iife', () => {
     )
 })
 
-it('destructuring in function args')
-// (x [y foo: z]){ bar(x y z) }
+it('destructures function args', () => {
+    // const args = (xs) => Object.entries(xs)
+    //     .map(([k,v]) => typeof k === "number" ? Arg(v) : NamedArg(k, v))
+    //
+    expect(
+        expr(`([foo bar]){ [bar foo] }`)
+    ).toEqual(
+        FnExp([Arg(Record([Arg(Ident('foo')), Arg(Ident('bar'))]))], [
+            Record([Arg(Ident('bar')), Arg(Ident('foo'))]),
+        ])
+    )
+})
 
 it('dot functions', () => {
     expect(expr(`foo.bar(baz).quux`))

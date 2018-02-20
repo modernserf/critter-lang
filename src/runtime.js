@@ -48,13 +48,8 @@ const JS = {
     in: ({ 0: key, 1: obj }) => key in obj,
 
     // call a JS function from critter
-    apply: ({ 0: f, 1: args, this: thisArg = null }) => {
-        try {
-            return ['ok', f.apply(thisArg, args)]
-        } catch (e) {
-            return ['err', e]
-        }
-    },
+    apply: ({ 0: f, 1: args, this: thisArg = null }) =>
+        f.apply(thisArg, JS.Array({ 0: args })),
     // call a critter function from JS
     fn: ({ 0: f }) => (...args) => f(args),
 

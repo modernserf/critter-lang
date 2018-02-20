@@ -1,6 +1,4 @@
-import { pipe, tagConstructors, match } from './util'
-
-const oneItem = (f, xs) => xs.length ? [f(xs)] : []
+import { pipe, match } from './util'
 
 export const compile = match({
     Program: ({ body }) => compile(body[0]),
