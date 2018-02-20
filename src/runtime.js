@@ -63,3 +63,7 @@ const JS = {
 }
 
 const _let = ({ 0: value, 1: next }) => next({ 0: value })
+const letrec = ({ 0: value, 1: next }) => {
+    const recur = (args) => value({ 0: recur })(args)
+    return next({ 0: recur })
+}

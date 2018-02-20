@@ -2,9 +2,6 @@
 
 @let id := (x){ x }
 
-; TODO: is this "enough" or does this limit to single recursion?
-@let letrec := (f next){ next(f(f(f))) }
-
 ; equality & comparison
 ; critter APIs doesn't use boolean values,
 ; instead, it extensively uses [#ok value] [#err error]

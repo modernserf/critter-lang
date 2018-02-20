@@ -92,6 +92,8 @@ it('has structural equality', () => {
         .toEqual(run(`ok(#foo)`))
     expect(run(`==([#foo 1] [#foo 1])`))
         .toEqual(run(`ok([#foo 1])`))
+    expect(run(`==([#foo [#bar [#baz 1]]] [#foo [#bar [#baz 1]]])`))
+        .toEqual(run(`ok([#foo [#bar [#baz 1]]])`))
 })
 
 it('has pattern matching', () => {
