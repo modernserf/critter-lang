@@ -107,15 +107,19 @@ const dotArgs = P.seq(
     _,
     token('Dot'),
     P.alt(fieldGet, record, terminal),
-    P.maybe(fnArgs).map(flatten),
-)
+    P.all(fnArgs)
+).map(([_, __, callee, [call, ...restCalls]]) =>
+    [callee, call || [], restCalls])
 
 const dotFnCall = P.seq(
     P.alt(fnCall, fieldGet, record, terminal),
     P.plus(dotArgs)
 ).map(([firstArg, seq]) => seq.reduce(
-    (acc, [_, __, ident, restArgs]) =>
-        tags.DotFnCall(ident, acc, restArgs),
+    (acc, [callee, call, restCalls]) =>
+        tagSeq(tags.FnCall)(
+            tags.DotFnCall(callee, acc, call),
+            restCalls
+        ),
     firstArg
 ))
 

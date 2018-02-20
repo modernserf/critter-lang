@@ -275,6 +275,6 @@ it('parses the flat-ok definition', () => {
     )
 })
 
-it.skip('parses chained calls on dots', () => {
+it('parses chained calls on dots', () => {
     expect(expr(`foo(1).bar(2).baz(3)(4 5)`)).toBeTruthy()
 })
