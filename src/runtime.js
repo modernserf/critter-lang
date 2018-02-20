@@ -12,7 +12,7 @@ const JS = {
     true: true,
     false: false,
     undefined: undefined,
-    Array: (obj) => {
+    Array: ({ 0: obj }) => {
         const arr = []
         for (const key in obj) {
             arr[key] = obj[key]

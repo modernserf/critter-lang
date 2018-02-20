@@ -232,3 +232,45 @@ it('parses deeply nested let bindings', () => {
         ])
     )
 })
+
+it('parses the flat-ok definition', () => {
+    const dot = (callee, head, ...tail) => DotFnCall(callee, head, tail.map(Arg))
+    const f = (callee, ...args) => FnCall(callee, args.map(Arg))
+
+    expect(
+        expr(`@let flat-ok := (m){
+                m.get(0).cond((key){
+                    ref-equal?(key #ok)
+                        .or(ref-equal?(key #error))
+                        .else({ ok(m) })
+                } {
+                    ok(m)
+                })
+            }`)
+    ).toEqual(
+        Keyword(Ident('let'), Ident('flat-ok'), FnExp([
+            Arg(Ident('m')),
+        ], [
+            dot(
+                Ident('cond'),
+                dot(Ident('get'), Ident('m'), Num(0)),
+                FnExp([Arg(Ident('key'))], [
+                    dot(
+                        Ident('else'),
+                        dot(
+                            Ident('or'),
+                            f(Ident('ref-equal?'), Ident('key'), Str('ok')),
+                            f(Ident('ref-equal?'), Ident('key'), Str('error'))
+                        ),
+                        FnExp([], [
+                            f(Ident('ok'), Ident('m')),
+                        ])
+                    ),
+                ]),
+                FnExp([], [
+                    f(Ident('ok'), Ident('m')),
+                ])
+            ),
+        ]))
+    )
+})

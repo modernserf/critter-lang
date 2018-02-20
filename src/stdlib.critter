@@ -1,0 +1,125 @@
+; basics
+@let log := (x){
+    JS::apply(
+        JS::global::console
+        x
+        this: JS::global::console)
+    }
+@let die := (message){ JS::throw(message) }
+
+@let id := (x){ x }
+
+; equality & comparison
+; critter APIs doesn't use boolean values,
+; instead, it extensively uses [#ok value] [#err error]
+; with pattern matching
+
+; TODO: prototypes
+@let Either := []
+@let Ok := [proto: Either]
+@let Error := [proto: Either]
+
+@let ok := (value){ [#ok value proto: Ok] }
+@let error := (err){ [#err err proto: Error] }
+@let tag := (m){ m::0 }
+@let unwrap := (m){ m::1 }
+@let bool? := (bool if-true if-false){
+    JS::?(bool ok(if-true) error(if-false))
+}
+
+@let get := (record key){
+    JS::in(key record).bool?(record.JS::get(key) #undefined)
+}
+; combine l and r into a single record, with r's fields taking precedence
+@let assign := (l r){
+    JS::apply(JS::Object::assign [[] l r])
+}
+
+; return copy of record with key set to value
+@let assoc := (record key value){
+    assign(record JS::set-prop([] key value))
+}
+
+@let ref-equal? := (l r){
+    JS::===(l r).bool?(l err(#not-equal))
+}
+
+@let cond := (maybe if-ok if-err){
+    JS::===(maybe.tag #ok).JS::?(
+        if-ok(maybe.unwrap)
+        if-err(maybe.unwrap)
+    )
+}
+
+@let then := (m if-ok){ m.cond(if-ok id) }
+@let else := (m if-err){ m.cond(id if-err) }
+@let or := (l r){ l.cond(id { r }) }
+@let and := (l r){ l.then({ r }) }
+
+; not swaps the ok & error tags
+@let not := (x){ x.cond(err ok) }
+
+; wrap m in #ok if its not already wrapped
+@let flat-ok := (m){
+    m.get(0).cond((key){
+        ref-equal?(key #ok)
+            .or(ref-equal?(key #error))
+            .else({ ok(m) })
+    } {
+        ok(m)
+    })
+}
+
+; control flow (use as `@do` `@try` `@guard`)
+; crash if m is error
+@let do := (m next){ m.cond(next die) }
+
+; block returns err if m is error
+@let try := (m next){ m.then((x){ x.next.flat-ok }) }
+; block returns ok if m is not error
+@let guard := (m next){ m.else((x){ x.next.flat-ok }) }
+
+@let record? := (r){
+    and(
+        not(ref-equal(r JS::null))
+        ref-equal?(JS::typeof(r) #object)
+    ).then({ ok(r) })
+}
+
+@let keys := (r){ JS::global::Object::keys(r) }
+
+@let fold := (record reducer init){
+    @let arr := JS::global::Object::values(record)
+    JS::apply(arr::reduce [JS::fn(reducer) init] this: arr)
+}
+
+; monadic fold
+@let chain := (record reducer init){
+    record.fold((ch value){
+        ch.then((ch-value){ reducer(ch-value value) })
+    } init)
+}
+
+; structural equality
+@let == := (l r){
+    ; both are equal primitives, or
+    ref-equal?(l r).else({
+        ; both are records
+        @try l.record?
+        @try r.record?
+
+        ; for each l key, if r has key, recur over l[key] == r[key]
+        @try l.keys.chain((_ key){
+            @try lval := l.get(key)
+            @try rval := r.get(key)
+            ==(lval rval)
+        } ok([]))
+
+        ; verify l has key (they have already been compared)
+        r.keys.chain((_ key){ l.get(key) } ok([]))
+    })
+}
+
+@let != := (l r){ not(==(l r)) }
+
+@let assert := (m message){ m.else({ die(message) }) }
