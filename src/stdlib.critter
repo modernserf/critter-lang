@@ -115,8 +115,27 @@
 
 @let assert := (m message){ m.else({ die(message) }) }
 
+; goal generators (aka parser combinators!)
+
+@let never := { error(#no-match) }
+@let always := (f){ (x){ x.f.ok } }
+
+; (a -> Either b c) , (a -> Either b c) -> (a -> Either b c)
+@let either := (l r){
+    (value){ l(value).else({ r(value) }) }
+}
+@let both := (l r){
+    (value){ l(value).then({ r(value) }) }
+}
+@let seq := (l r){
+    (value){ l(value).then(r) }
+}
+; apply f until it fails
+@letrec all := (recur){ (f){
+    (value){ f(value).cond(recur(f) { ok(value) }) }
+} }
+
+; a, [(a -> Either b c)] -> Either b c
 @let match := (value fs){
-    fs.fold((prev f){
-        prev.else({ f(value) })
-    } error(#no-matches-provided))
+    fs.fold(either never)(value)
 }

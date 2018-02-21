@@ -9,6 +9,12 @@ const {
 
 const compile = pipe([expand, c])
 
+it('throws on unknown nodes', () => {
+    expect(() => {
+        compile({ type: 'Fart' })
+    }).toThrow()
+})
+
 it('compiles number literals', () => {
     expect(compile(Num(123)))
         .toEqual('123')
@@ -87,7 +93,7 @@ it('compiles field access', () => {
         .toEqual(`foo["bar"]`)
 })
 
-it('compiles bare keywords', () => {
+it('throws on bare keywords', () => {
     const prog = Keyword(Ident('foo'), null, Ident('bar'))
     expect(() => {
         compile(prog)
