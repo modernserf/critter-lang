@@ -1,6 +1,7 @@
 import {
-    ok, error, ops, either, parse, never, any, matchOne, eq, not,
+    ok, error, ops, either, parse, never, any, matchOne, eq, not, both,
     alts, seqs, start, end, all, flatMapResult, wrappedWith, sepBy,
+    view, set, lensProp, over,
 } from './goal'
 
 describe('running goals', () => {
@@ -118,5 +119,41 @@ describe('parser combinators', () => {
         const parser = sepBy(notComma, eq(','))
         expect(parse(parser, Array.from('foo,bar,baz')).value).toEqual(['foo', 'bar', 'baz'])
         expect(parse(parser, Array.from('foo bar baz')).value).toEqual(['foo bar baz'])
+    })
+})
+
+describe('lenses', () => {
+    it('uses lenses', () => {
+        const x = { foo: { bar: { baz: 2 } } }
+        const foo = lensProp('foo')
+        expect(view(x, foo).value).toEqual({ bar: { baz: 2 } })
+        expect(set(x, foo, { bar: 3 }).value).toEqual({ foo: { bar: 3 } })
+    })
+
+    it('seq lenses', () => {
+        const x = { foo: { bar: { baz: 2 } } }
+        const p = seqs(lensProp('foo'), lensProp('bar'))
+        expect(view(x, p).value).toEqual({ baz: 2 })
+        expect(set(x, p, { baz: 3 }).value).toEqual({ foo: { bar: { baz: 3 } } })
+    })
+
+    it('sets either foo or bar', () => {
+        const inc = (x) => x + 1
+        const p = either(lensProp('foo'), lensProp('bar'))
+        expect(over({ foo: 1, bar: 2 }, p, inc).value)
+            .toEqual({ foo: 2, bar: 2 })
+        expect(over({ bar: 2 }, p, inc).value)
+            .toEqual({ bar: 3 })
+        expect(over({ baz: 2 }, p, inc).value)
+            .toEqual([['missing_field', 'foo'], ['missing_field', 'bar']])
+    })
+
+    it('sets bar if foo lens succeeds', () => {
+        const inc = (x) => x + 1
+        const p = both(lensProp('foo'), lensProp('bar'))
+        expect(over({ foo: 1, bar: 2 }, p, inc).value)
+            .toEqual({ foo: 1, bar: 3 })
+        expect(over({ bar: 2 }, p, inc).value)
+            .toEqual(['missing_field', 'foo'])
     })
 })

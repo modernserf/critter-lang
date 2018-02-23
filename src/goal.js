@@ -145,3 +145,24 @@ export const trace = (f) => (p) =>
         from: p.index,
         to: nextP.index,
     }))
+
+const lensTarget = (focus) => ({ focus, set: ok })
+
+export const lens = (getter, setter) => (p) =>
+    getter(p.focus).then((focus) => ok({
+        focus,
+        set: (value) => setter(p.focus, value).then(p.set),
+    }))
+export const view = (focus, lens) => lens(lensTarget(focus))
+    .then((p) => ok(p.focus))
+export const set = (focus, lens, value) => lens(lensTarget(focus))
+    .then((p) => p.set(value))
+export const over = (focus, lens, mapper) =>
+    lens(lensTarget(focus)).then((p) => p.set(mapper(p.focus)))
+
+export const lensProp = (key) => lens(
+    (focus) => key in focus
+        ? ok(focus[key])
+        : error(['missing_field', key]),
+    (focus, value) => ok({ ...focus, [key]: value }),
+)
