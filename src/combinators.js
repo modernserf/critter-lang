@@ -202,7 +202,7 @@ export const sepBy = (content, separator) => seq(
 // as above, but matches 1 or more `content`
 export const sepBy1 = (content, separator) => seq(
     content,
-    all(seq(separator, content))
+    all(seq(separator, content).map(_second))
 ).map(_consSeq)
 
 // matches `content` wrapped with left or left + right

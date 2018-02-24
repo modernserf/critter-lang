@@ -111,3 +111,17 @@ it('range', () => {
     expect((p.parse(['5']).ok)).toBe(true)
     expect((p.parse(['8']).ok)).toBe(false)
 })
+
+it('sepBy', () => {
+    const p = P.sepBy(P.digit, P.chars(','))
+    expect(p.parse(Array.from('1,2,3,4,5')).value)
+        .toEqual(['1', '2', '3', '4', '5'])
+    expect(p.parse(['1']).value).toEqual(['1'])
+    expect(p.parse([]).value).toEqual([])
+
+    const q = P.sepBy1(P.digit, P.chars(','))
+    expect(q.parse(Array.from('1,2,3,4,5')).value)
+        .toEqual(['1', '2', '3', '4', '5'])
+    expect(q.parse(['1']).value).toEqual(['1'])
+    expect(q.parse([]).ok).toBe(false)
+})
