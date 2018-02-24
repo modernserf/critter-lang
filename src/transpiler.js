@@ -4,13 +4,15 @@ import { compile } from './compiler'
 import { expand } from './expander'
 import { pipe } from './util'
 
-const runtime = fs.readFileSync('./src/runtime.js')
-const stdlib = fs.readFileSync('./src/stdlib.critter')
+const runtime = fs.readFileSync('./src/runtime.js', 'utf8')
+const stdlib = fs.readFileSync('./src/stdlib.critter', 'utf8')
+
+const compiledStdlib = runtime + ';\n' +
+    pipe([parse, expand, compile])(stdlib)
 
 export const transpile = pipe([
-    (text) => stdlib + '\n\n' + text,
     parse,
     expand,
     compile,
-    (js) => runtime + ';\n' + js,
+    (js) => compiledStdlib.replace('BEGIN', js),
 ])
