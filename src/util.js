@@ -1,5 +1,7 @@
+export const comp = (f, g) => (x) => f(g(x))
 export const pipe = (fns) => (input) => fns.reduce((acc, f) => f(acc), input)
 export const id = (x) => x
+export const k = (x) => () => x
 export const spread = (f) => (xs) => f(...xs)
 
 export const tagger = (type, keys) => (...args) =>

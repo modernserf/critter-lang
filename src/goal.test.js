@@ -1,7 +1,7 @@
 import {
     ok, error, ops, either, parse, never, any, matchOne, eq, not, both,
     alts, seqs, start, end, all, flatMapResult, wrappedWith, sepBy,
-    view, set, lensProp, over,
+    view, set, lensProp, over, iso,
 } from './goal'
 
 describe('running goals', () => {
@@ -155,5 +155,38 @@ describe('lenses', () => {
             .toEqual({ foo: 1, bar: 3 })
         expect(over({ bar: 2 }, p, inc).value)
             .toEqual(['missing_field', 'foo'])
+    })
+
+    it('bijections', () => {
+        const json = iso(
+            (focus) => {
+                const str = JSON.stringify(focus)
+                return str === undefined
+                    ? error('could_not_stringify_to_json')
+                    : ok(str)
+            },
+            (value) => {
+                try {
+                    return ok(JSON.parse(value))
+                } catch (e) {
+                    return error('could_not_parse_json')
+                }
+            }
+        )
+        const p = seqs(lensProp('foo'), json.to)
+        expect(view({ foo: { bar: 2 } }, p).value).toEqual('{"bar":2}')
+        expect(set({ foo: { bar: 2 } }, p, '{"bar":3}').value)
+            .toEqual({ foo: { bar: 3 } })
+
+        const q = seqs(json.from, lensProp('foo'))
+        expect(view('{"foo": {"bar": 2}}', q).value)
+            .toEqual({ bar: 2 })
+        expect(set('{"foo": {"bar": 2}}', q, { bar: 3 }).value)
+            .toEqual('{"foo":{"bar":3}}')
+
+        expect(view((x) => x, json.to).value)
+            .toEqual('could_not_stringify_to_json')
+        expect(view('{not a valid json string}', json.from).value)
+            .toEqual('could_not_parse_json')
     })
 })

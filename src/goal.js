@@ -1,3 +1,5 @@
+import { comp, k, id } from './util'
+
 export class Goal {
     static flatten (value) {
         return (value instanceof Goal) ? value : ok(value)
@@ -7,8 +9,8 @@ export class Goal {
     }
     map ([ifOk, ifErr]) {
         this.flatMap([
-            (x) => ok(ifOk(x)),
-            (x) => error(ifErr(x)),
+            comp(ok, ifOk),
+            comp(error, ifErr),
         ])
     }
     cond (ifOk, ifErr) {
@@ -21,19 +23,19 @@ export class Goal {
         return this.cond(ok, f)
     }
     or (rhs) {
-        return this.else(() => rhs)
+        return this.else(k(rhs))
     }
     and (rhs) {
-        return this.then(() => rhs)
+        return this.then(k(rhs))
     }
     not () {
         return this.cond(error, ok)
     }
     try (f = id) {
-        return this.then((x) => Goal.flatten(f(x)))
+        return this.then(comp(Goal.flatten, f))
     }
     guard (f = id) {
-        return this.else((x) => Goal.flatten(f(x)))
+        return this.else(comp(Goal.flatten, f))
     }
 }
 class Ok extends Goal {
@@ -48,8 +50,6 @@ class Err extends Goal {
     }
     get ok () { return false }
 }
-
-const id = (x) => x
 
 // goal generators
 export const ok = (value) => new Ok(value)
@@ -166,3 +166,8 @@ export const lensProp = (key) => lens(
         : error(['missing_field', key]),
     (focus, value) => ok({ ...focus, [key]: value }),
 )
+
+export const iso = (l, r) => ({
+    to: lens(l, (_, value) => r(value)),
+    from: lens(r, (_, value) => l(value)),
+})
