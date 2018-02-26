@@ -129,5 +129,5 @@ it('compiles keyword assignments', () => {
     ])
 
     expect(compile(prog)).toEqual(
-        `() => foo({ 0: bar, 1: ({ 0: x }) => inc({ 0: x }) })`)
+        `() => foo({ 0: bar, 1: ({ 0: x }) => inc({ 0: x }), "assignment": ({ 0: "Ident", 1: "x" }) })`)
 })

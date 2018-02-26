@@ -33,8 +33,8 @@ it('expands sequences into callbacks', () => {
                     do(side-effect(x y) {
                         z
                     })
-                })
-            })
+                } assignment: [#Ident #y])
+            } assignment: [#Ident #x])
         }
     `))
 })
@@ -46,15 +46,13 @@ it('expands pattern-matching function args into try blocks', () => {
                 x
             }
         `))
-    ).toEqual(parse(`
+    ).toEqual(expand(parse(`
         (_0 _1 x){
-            try(==(_0 #foo) {
-                try(==(_1 1) {
-                    x
-                })
-            })
+            @try ==(_0 #foo)
+            @try ==(_1 1)
+            x
         }
-    `))
+    `)))
 })
 
 it('destructures function args', () => {
@@ -62,15 +60,13 @@ it('destructures function args', () => {
         expand(parse(`
             ([l r]){ [r l] }
         `))
-    ).toEqual(parse(`
+    ).toEqual(expand(parse(`
         (_0){
-            let(_0::0 (l){
-                let(_0::1 (r){
-                    [r l]
-                })
-            })
+            @let l := _0::0
+            @let r := _0::1
+            [r l]
         }
-    `))
+    `)))
 })
 
 it('destructures and pattern matches', () => {

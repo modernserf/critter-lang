@@ -1,5 +1,6 @@
 import { id, match } from './util'
 import { tags } from './parser'
+import { quote } from './quote'
 
 export const expand = match({
     Program: ({ body }) =>
@@ -123,5 +124,7 @@ function expandKeyword (kw, value, next, assignment) {
         tags.Arg(expandDestructuring(
             (assignment ? [tags.Arg(assignment)] : []),
             [next])),
-    ])
+    ].concat(assignment ? [
+        tags.NamedArg('assignment', quote(assignment)),
+    ] : []))
 }
