@@ -58,6 +58,6 @@ const escapeReservedWords = (name) => reservedJSWords.has(name)
 
 const ident = pipe([escapeChars, escapeReservedWords])
 
-const quote = (s) => `"${s.replace(/"/g, `\\"`)}"`
+const quote = (s) => `"${s.replace(/"/g, `\\"`).replace(/\n/g, `\\n`)}"`
 
 const obj = (fields) => `({ ${fields.map(compile).join(', ')} })`

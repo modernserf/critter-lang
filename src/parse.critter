@@ -23,6 +23,10 @@
     })
 }
 
+@let ++ := (x){ JS::+(x 1) }
+
+@let -- := (x){ JS::-(x 1) }
+
 @let any := (input i){
     input.get(i).cond((value){
         result([value] i.++)
@@ -32,29 +36,25 @@
 }
 
 @let match := (matcher){ (input i){
-    any(input i).then(([[val] i]){
-        matcher(val).cond({
-            result([val] i)
-        } {
-            fail(#no-match i.--)
-        })
+    @try [[val] i] := any(input i)
+    matcher(val).cond({
+        result([val] i)
+    } {
+        fail(#no-match i.--)
     })
 } }
 
-@let eq = (value){ match((x){ x.==(value) }) }
+@let eq := (value){ match((x){ x.==(value) }) }
 
 ; alt
 @let | := (l r){ (input i){
     l.parse(input i).else({ r.parse(input i) })
 } }
 
-; seq
-@let , := (l r){ (input i){
-    l.parse(input i).then(([val1 i1]){
-        r.parse(input i1).then(([val2 i2]){
-            result(val1.concat(val2) i2)
-        })
-    })
+@let seq := (l r){ (input i){
+    @try [val1 i1] := l.parse(input i)
+    @try [val2 i2] := r.parse(input i1)
+    result([val1 val2] i2)
 } }
 
 ; match 0 or more
@@ -65,6 +65,7 @@
                 @do assert(
                     i.!=(next-i)
                     "`*` cannot be used with a parser that does not consume input"
+                )
                 loop::recur([coll.concat(val) next-i])
             } {
                 loop::done(result(coll i))
@@ -73,7 +74,7 @@
 } }
 
 ; match 1 or more
-@let + := (p){ p.,(p.*) }
+@let + := (p){ p.seq(p.*) }
 
 @let _nothing := always([])
 
@@ -111,4 +112,4 @@
 @let newline := "
 "
 
-@let whitespace := [space tab newline].map(eq).fold1(|)
+@let whitespace := eq(space).|(eq(tab)).|(eq(newline))
