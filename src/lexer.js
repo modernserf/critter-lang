@@ -17,7 +17,14 @@ const hexNumber = P.seq(
     P.plus(P.alt(P.digit, P.range('A', 'F'), P.range('a', 'f'))).map(join)
 ).map(join)
 
-const digits = P.plus(P.digit).map(join)
+const digits = P.seq(
+    P.digit,
+    P.all(P.alt(
+        P.chars('_').map((x) => ''),
+        P.digit
+    )).map(join)
+).map(join)
+
 const decNumber = P.seq(
     P.maybe(P.chars('-')),
     digits,
