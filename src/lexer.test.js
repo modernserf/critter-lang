@@ -13,7 +13,7 @@ it('lexes simple values', () => {
         .toEqual([tag('TaggedString', ['#', 'foo'])])
 })
 
-it('lexes underscores in numbers', () => {
+it('allows underscores in numbers', () => {
     expect(tokenize('1_000_000.00'))
         .toEqual([tag('DecNumber', '1000000.00')])
 })
