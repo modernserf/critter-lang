@@ -1,7 +1,7 @@
 import { pipe, match } from './util'
 
 export const compile = match({
-    Program: ({ body }) => compile(body[0]),
+    Program: ({ body }) => body.map(compileBody).join(';\n'),
     Number: ({ value }) => value.toString(),
     String: ({ value }) => quote(value),
     Ident: ({ value }) => ident(value),
@@ -30,6 +30,13 @@ export const compile = match({
 }, (tag) => {
     throw new Error(`Unknown AST node ${tag.type}`)
 })
+
+const compileBody = match({
+    Keyword: ({ keyword, assignment, value }) => assignment
+        ? `const ${compile(assignment)} = ${
+            compile(keyword)}({ 0: ${compile(value)} })`
+        : `${compile(keyword)}({ 0: ${compile(value)} })`,
+}, compile)
 
 const reservedJSWords = new Set([
     'null', 'undefined', 'true', 'false',

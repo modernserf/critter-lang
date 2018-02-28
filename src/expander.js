@@ -4,7 +4,7 @@ import { quote } from './quote'
 
 export const expand = match({
     Program: ({ body }) =>
-        tags.Program([singleExpression(body)]),
+        tags.Program(expandTopLevel(body)),
     Number: id,
     String: id,
     Ident: id,
@@ -32,6 +32,22 @@ export const expand = match({
         throw new Error('Keyword must be expanded in context of body')
     },
 }, ({ type }) => { throw new Error(`Unknown AST node ${type}`) })
+
+// TODO: top-level destructuring?
+const expandTopLevel = (body) => {
+    if (!body.length) { return [] }
+    const [tag, ...rest] = body
+    if (tag.type === 'Keyword') {
+        const { keyword, assignment, value } = tag
+        return [
+            tags.Keyword(
+                expand(keyword),
+                assignment ? expand(assignment) : null,
+                expand(value)),
+        ].concat(expandTopLevel(rest))
+    }
+    return [expand(tag)].concat(expandTopLevel(rest))
+}
 
 // TODO: how can I prevent name collisions here?
 // can I have unparseable but legal variable names?

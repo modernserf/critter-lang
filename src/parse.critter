@@ -1,13 +1,13 @@
 ; TODO: this might do somethign useful?
-@let parse := (p input index){ p(input index) }
+@def parse := (p input index){ p(input index) }
 
-@let result := (vals index){ ok([vals index]) }
-@let fail := (err index){ error([err index]) }
+@def result := (vals index){ ok([vals index]) }
+@def fail := (err index){ error([err index]) }
 
-@let never := (_ i){ fail(#never-matches i) }
-@let always := (value){ (_ i){ result(value i) } }
+@def never := (_ i){ fail(#never-matches i) }
+@def always := (value){ (_ i){ result(value i) } }
 
-@let ^ := (_ i){
+@def ^ := (_ i){
     i.==(0).cond({
         result([] i)
     } {
@@ -15,7 +15,7 @@
     })
 }
 
-@let $ := (input i){
+@def $ := (input i){
     input.length.==(i).cond({
         result([] i)
     } {
@@ -23,11 +23,11 @@
     })
 }
 
-@let ++ := (x){ JS::+(x 1) }
+@def ++ := (x){ JS::+(x 1) }
 
-@let -- := (x){ JS::-(x 1) }
+@def -- := (x){ JS::-(x 1) }
 
-@let any := (input i){
+@def any := (input i){
     input.get(i).cond((value){
         result([value] i.++)
     } {
@@ -35,7 +35,7 @@
     })
 }
 
-@let match := (matcher){ (input i){
+@def match := (matcher){ (input i){
     @try [[val] i] := any(input i)
     matcher(val).cond({
         result([val] i)
@@ -44,21 +44,21 @@
     })
 } }
 
-@let eq := (value){ match((x){ x.==(value) }) }
+@def eq := (value){ match((x){ x.==(value) }) }
 
 ; alt
-@let | := (l r){ (input i){
+@def | := (l r){ (input i){
     l.parse(input i).else({ r.parse(input i) })
 } }
 
-@let seq := (l r){ (input i){
+@def seq := (l r){ (input i){
     @try [val1 i1] := l.parse(input i)
     @try [val2 i2] := r.parse(input i1)
     result([val1 val2] i2)
 } }
 
 ; match 0 or more
-@let * := (p){ (input init-i){
+@def * := (p){ (input init-i){
     loop::run([[] init-i] ([coll i]){
         p.parse(input i)
             .cond(([val next-i]){
@@ -74,15 +74,15 @@
 } }
 
 ; match 1 or more
-@let + := (p){ p.seq(p.*) }
+@def + := (p){ p.seq(p.*) }
 
-@let _nothing := always([])
+@def _nothing := always([])
 
 ; match 0 or 1
-@let ? := (p){ p.|(_nothing) }
+@def ? := (p){ p.|(_nothing) }
 
 ; match if p does not match; does not consume input
-@let ~ := (p){ (input i){
+@def ~ := (p){ (input i){
     p.parse(input i).cond({
         fail(#should-not-match i)
     } {
@@ -90,10 +90,10 @@
     })
 } }
 
-@let code-point-at := (str index){
+@def code-point-at := (str index){
     JS::apply(str::codePointAt [index] this: str)
 }
-@let range := (start end){
+@def range := (start end){
     @let start-code := start.code-point-at(0)
     @let end-code :=  end.code-point-at(0)
     match((value){
@@ -102,14 +102,14 @@
     })
 }
 
-@let digit := range("0" "9")
-@let uppercase := range(#A #Z)
-@let lowercase := range(#a #z)
-@let letter := uppercase.|(lowercase)
+@def digit := range("0" "9")
+@def uppercase := range(#A #Z)
+@def lowercase := range(#a #z)
+@def letter := uppercase.|(lowercase)
 
-@let space := " "
-@let tab := "   "
-@let newline := "
+@def space := " "
+@def tab := "   "
+@def newline := "
 "
 
-@let whitespace := eq(space).|(eq(tab)).|(eq(newline))
+@def whitespace := eq(space).|(eq(tab)).|(eq(newline))

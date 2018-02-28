@@ -1,6 +1,6 @@
-@let die := (message){ JS::throw(message) }
+@def die := (message){ JS::throw(message) }
 
-@let id := (x){ x }
+@def id := (x){ x }
 
 ; equality & comparison
 ; critter APIs doesn't use boolean values,
@@ -9,47 +9,47 @@
 
 ; TODO: identify ok/error with Either prototype, not tag
 
-@let ok := (value){ [#ok value] }
-@let error := (err){ [#err err] }
-@let tag := (m){ m::0 }
-@let unwrap := (m){ m::1 }
-@let bool? := (bool if-true if-false){
+@def ok := (value){ [#ok value] }
+@def error := (err){ [#err err] }
+@def tag := (m){ m::0 }
+@def unwrap := (m){ m::1 }
+@def bool? := (bool if-true if-false){
     JS::?(bool ok(if-true) error(if-false))
 }
 
-@let get := (record key){
+@def get := (record key){
     JS::in(key record).bool?(record.JS::get(key) #undefined)
 }
 ; combine l and r into a single record, with r's fields taking precedence
-@let assign := (l r){
+@def assign := (l r){
     JS::apply(JS::Object::assign [[] l r])
 }
 
 ; return copy of record with key set to value
-@let assoc := (record key value){
+@def assoc := (record key value){
     assign(record JS::set-prop([] key value))
 }
 
-@let ref-equal? := (l r){
+@def ref-equal? := (l r){
     JS::===(l r).bool?(l error(#not-equal))
 }
 
 ; Either a b , (a -> Either c d) , (b -> Either c d) -> Either c d
-@let cond := (maybe if-ok if-err){
+@def cond := (maybe if-ok if-err){
     @let f := JS::===(maybe.tag #ok)
         .JS::?(if-ok if-err)
     f(maybe.unwrap)
 }
 
-@let then := (m if-ok){ m.cond(if-ok error) }
-@let else := (m if-err){ m.cond(ok if-err) }
-@let or := (l r){ l.else({ r }) }
-@let and := (l r){ l.then({ r }) }
+@def then := (m if-ok){ m.cond(if-ok error) }
+@def else := (m if-err){ m.cond(ok if-err) }
+@def or := (l r){ l.else({ r }) }
+@def and := (l r){ l.then({ r }) }
 
 ; not swaps the ok & error tags
-@let not := (x){ x.cond(error ok) }
+@def not := (x){ x.cond(error ok) }
 
-@let record? := (r){
+@def record? := (r){
     and(
         not(ref-equal?(r JS::null))
         ref-equal?(JS::typeof(r) #object)
@@ -57,7 +57,7 @@
 }
 
 ; wrap m in #ok if its not already wrapped
-@let flat-ok := (m){
+@def flat-ok := (m){
     @let inner := {
         @then m.record?
         @then key := m.get(0)
@@ -69,28 +69,28 @@
 
 ; control flow (use as `@do` `@try` `@guard`)
 ; crash if m is error
-@let do := (m next){ m.cond(next die) }
+@def do := (m next){ m.cond(next die) }
 ; block returns err if m is error
-@let try := (m next){ m.then((x){ x.next.flat-ok }) }
+@def try := (m next){ m.then((x){ x.next.flat-ok }) }
 ; block returns ok if m is not error
-@let guard := (m next){ m.else((x){ x.next.flat-ok }) }
+@def guard := (m next){ m.else((x){ x.next.flat-ok }) }
 
-@let keys := (r){ JS::apply(JS::global::Object::keys [r]) }
+@def keys := (r){ JS::apply(JS::global::Object::keys [r]) }
 
-@let fold := (record reducer init){
+@def fold := (record reducer init){
     @let arr := JS::apply(JS::global::Object::values [record])
     JS::apply(arr::reduce [JS::fn(reducer) init] this: arr)
 }
 
 ; monadic fold
-@let chain := (record reducer init){
+@def chain := (record reducer init){
     record.fold((ch value){
         ch.then((ch-value){ reducer(ch-value value) })
     } init)
 }
 
 ; structural equality
-@letrec == := (recur){ (l r){
+@def == := (l r){
     ; both are equal primitives, or
     @else ref-equal?(l r)
     ; both are records
@@ -101,7 +101,7 @@
     @then l.keys.chain((_ key){
         @then lval := l.get(key)
         @then rval := r.get(key)
-        recur(lval rval)
+        ==(lval rval)
     } ok(#init))
 
 
@@ -109,34 +109,34 @@
     @then r.keys.chain((_ key){ l.get(key) } ok(#init))
 
     ok(l)
-} }
+}
 
-@let != := (l r){ not(==(l r)) }
+@def != := (l r){ not(==(l r)) }
 
-@let assert := (m message){ m.else({ die(message) }) }
+@def assert := (m message){ m.else({ die(message) }) }
 
 ; goal generators (aka parser combinators!)
 
-@let never := { error(#no-match) }
-@let always := (f){ (x){ x.f.ok } }
+@def never := { error(#no-match) }
+@def always := (f){ (x){ x.f.ok } }
 
 ; (a -> Either b c) , (a -> Either b c) -> (a -> Either b c)
-@let either := (l r){
+@def either := (l r){
     (value){ l(value).else({ r(value) }) }
 }
-@let both := (l r){
+@def both := (l r){
     (value){ l(value).then({ r(value) }) }
 }
-@let seq := (l r){
+@def seq := (l r){
     (value){ l(value).then(r) }
 }
 ; apply f until it fails
-@letrec all := (recur){ (f){
-    (value){ f(value).cond(recur(f) { ok(value) }) }
-} }
+@def all := (f){
+    (value){ f(value).cond(all(f) { ok(value) }) }
+}
 
 ; a, [(a -> Either b c)] -> Either b c
-@let match := (value fs){
+@def match := (value fs){
     fs.fold(either never)(value)
 }
 
