@@ -13,13 +13,13 @@
     <h1>Critter</h1>
     <p>
         <strong>Critter is a functional-ish language that compiles to JavaScript.</strong>
-        Critter includes persistent data structures, pattern matching, and a syntax that combines the simplicity of Lisp with the readability of scripting languages.
+        Critter's purpose is to explore ideas from research languages, both new and old, in the context of a modern, dynamically-typed scripting language.
     </p>
     <p>
-        Or, rather, it will someday. Critter is currently unimplemented.
+        Critter is pre-alpha software, and its syntax and features are still highly unstable.
     </p>
 
-    <div data-critter-lang>
+    <pre><code class="critter language-critter">
         @import [::ready ::find ::render ::tag] := #dom
 
         @let hello := (name: name){
@@ -33,251 +33,361 @@
         @do find(#body.tag).render(
             [hello [name: "World"]]
         )
-    </div>
+    </code></pre>
 </header>
 
-<section class="main-contents">
+<div class="main-contents">
     <h2>Table of Contents</h2>
     <ol class="contents">
-        <li><a href="#overview">What makes Critter different?</a></li>
-        <li><a href="#basic-types">Basic types &amp; syntax</a></li>
-        <li><a href="#pattern-matching">Pattern matching &amp; conditionals</a></li>
-        <li><a href="#error-handling">Error handling</a></li>
-        <li><a href="#tables">Tables &amp; relations</a></li>
-        <li><a href="#processes">Processes &amp; mutation</a></li>
-        <li><a href="#metaprogramming">Metaprogramming</a></li>
-        <li><a href="#interop">JavaScript interop</a></li>
     </ol>
+</div>
+
+<section id="syntax">
+    <h1>Types &amp; Syntax</h1>
+
+    <p>Critter has fewer types than most programming languages — only <strong>numbers</strong>, <strong>strings</strong>, <strong>records</strong> and <strong>functions</strong>. Critter also has a highly regular syntax with a handful of unambiguous forms and consistent rules for evaluation.</p>
+
+    <aside><p>
+        The syntax is somewhat in the spirit of Dylan's D-Expressions, but Critter is not a Lisp and does not use macros.
+    </p></aside>
+
+    <h2 id="comments">Comments</h2>
+
+    <p>Critter has line comments delimited with <code>;</code> semicolon.</p>
+
+    <pre><code class="critter language-critter">
+        ; this is a comment.
+    </code></pre>
+
+    <h2 id="identifiers">Identifiers</h2>
+
+    <p>Critter has very loose restrictions on identifiers: any character besides whitespace and the reserved delimiters (<code>:</code> <code>;</code> <code>.</code> <code>@</code> <code>"</code> <code>()</code> <code>[]</code> <code>{}</code>) are allowed.</p>
+
+    <pre><code class="critter language-critter">
+        foo bar/baz-quux &gt;=&gt; 💩
+    </code></pre>
+
+    <h2 id="numbers">Numbers</h2>
+
+    <p>Critter supports decimal and hex numbers. Decimal numbers can have negative signs, decimal points, and underscores for spacing. Hex numbers can mix upper and lowercase letters.</p>
+
+    <pre><code class="critter language-critter">
+        -123.45 1_000_00 0xDEADBEEF 0xabad1dea
+    </code></pre>
+
+    <h2 id="strings">Strings</h2>
+
+    <p>Strings in Critter are delimited with <code>"</code> double quotes. These can be escaped inside strings with <code>\"</code>, but all other characters (e.g. line-breaks) are permitted to be used unescaped.</p>
+
+    <pre><code class="critter language-critter">
+        "foo bar baz"  "\"Hello,\" he lied."
+        "This is a
+        multi-line string."
+    </code></pre>
+
+    <p>Critter also allows strings without spaces and the reserved delimiters to be written as "hashtags".</p>
+
+    <aside><p>
+        This is superficially similar to quoting in Lisp or symbols in Ruby, but <code>#</code> is just an alternate syntax for strings, not an operator or a distinct type.
+    </p></aside>
+
+    <pre><code class="critter language-critter">
+        #foo #bar/baz-quux #&gt;=&gt; #💩
+    </code></pre>
+
+    <h2 id="records">Records</h2>
+
+    <p>Critter has a single composite data type: the record. Records are delimited with <code>[]</code> square brackets. Records can have both positional (zero-indexed) and named fields.</p>
+
+    <pre><code class="critter language-critter">
+        [#foo 10.5 bar: [x: 1 y: 2]]
+    </code></pre>
+
+    <p>Record fields can be accessed directly with the <code>::</code> operator.</p>
+
+    <pre><code class="critter language-critter">
+        [#foo 2]::0     ; #foo
+        [x: 1 y: 2]::x  ; 1
+    </code></pre>
+
+    <h2 id="functions">Functions</h2>
+
+    <p>Critter function definitions use <code>()</code> round parentheses for parameters and <code>{}</code> curly brackets to delimit the function body. Function parameters follow the same pattern as record fields: both positional and named arguments are permitted. The last expression in a function body is the return value.</p>
+
+    <pre><code class="critter language-critter">
+        (x y foo: z){ [z x y] }
+    </code></pre>
+
+    <p>Functions without arguments can be written without the parens:</p>
+
+    <pre><code class="critter language-critter">
+        { #foo }
+    </code></pre>
+
+    <p>Critter supports a few different syntactic forms for calling functions, which fill the roles methods, operators and keywords have in other languages.</p>
+
+    <pre><code class="critter language-critter">
+        foo([123] bar: 45)
+        quux()
+    </code></pre>
+
+    <p>Instead of methods, critter allows functions to be called with <code>.</code> dot syntax. Functions that take a single argument don't need trailing parens.</p>
+
+    <pre><code class="critter language-critter">
+        [123].foo(bar: 45)
+        [x y z].length
+    </code></pre>
+
+    <p>Additionally, critter has keyword-style syntax, delimited with the <code>@</code> at-sign. Keyword syntax allows nested callback functions to be written as a series of assignments.</p>
+
+    <aside><p>
+        This is similar to <code>do</code> notation in Haskell, though it operates on arbitrary functions, not specifically monadic bind / threading.
+    </p></aside>
+
+    <pre><code class="critter language-critter">
+        (user){
+            @try user.is-signed-in?
+            @let x := foo(1)
+            @await y := async-foo(2)
+            [x y]
+        }
+        ; is equivalent to:
+        (user){
+            try(user.is-signed-in? {
+                let(foo(1) (x){
+                    await(async-foo(2) (y){
+                        [x y]
+                    })
+                })
+            })
+        }
+    </code></pre>
 </section>
 
-<section id="overview">
-    <h2>What makes Critter different?</h2>
-    <p>
-        <strong>Critter isn't object-oriented.</strong> Not in the traditional sense, anyways. Critter has neither classes nor inheritance. There is no notion of <code>this</code> or <code>self</code>; there is no such thing as a "method", only "functions". However, Critter <em>does</em> have <strong>modules</strong> for organizing related functions, <strong>dot syntax</strong> to simulate method chaining, and <strong>processes</strong> for managing state changes and behavior.
-    </p>
-    <p>
-        <strong>Critter will also disappoint functional programming purists.</strong> Critter features dynamic typing and permits mutation and other side effects. However, Critter promotes a functional style of programming:
-    </p>
+<section id="control-flow">
+    <h1>Conditions, Control Flow and Error Handling</h1>
+
+    <p>Critter has no notion of <code>void</code> or <code>undefined</code>, ie. the absence of a value. Functions always return values, even if they're evaluated for side effects. Anything that would introduce an undefined value, such as calling a function with fewer arguments than expected, or accessing a field that is not present on a record, raises an unrecoverable error.</p>
+
+    <p>Critter also has no notion of <code>null</code>, ie. a catch-all for missing data or failure. Critter idiomatically uses <strong>result values</strong> -- records structured as <code>[#ok value]</code> or <code>[#error message]</code> -- to represent success or failure.</p>
+
+    <aside><p>
+        This is similar to Result/Either types in typed functional languages, as well as <code>{ok, Value}</code> patterns in Erlang.
+    </p></aside>
+
+    <p>Critter has no <code>throw</code>/<code>catch</code> error handling. Errors are handled through error result values or by terminating the process unconditionally.</p>
+
+    <p>Most unusually, Critter has no <code>true</code> or <code>false</code> booleans. Here, Critter also uses result values. This means that <em>all</em> of Critter's comparison functions have control flow properties similar to short-circuit boolean operators.</p>
+
+    <aside><p>
+        This is most similar to goal-directed execution in the <a href="https://en.wikipedia.org/wiki/Icon_(programming_language)">Icon programming language</a>.
+    </p></aside>
+
+    <h2 id="resultsconditions">Results &amp; Conditions</h2>
+
     <ul>
-        <li>data structures are immutable by default</li>
-        <li>everything is an expression</li>
-        <li>functions called for side effects are made explicit</li>
-        <li>error &amp; null handling through variant types and pattern matching</li>
+    <li>ok, error</li>
+
+    <li>cond, then, else</li>
+
+    <li>chained comparison operators</li>
+
+    <li>record traversal</li>
+
+    <li>pattern matching</li>
     </ul>
-    <p>
-        <strong>Critter discourages string manipulation.</strong> Like Ruby, Clojure, and Elixir, Critter uses an <code>#hashtag</code> type in many places where one would use strings in JavaScript. Hashtags are much more restricted than strings: they cannot be created at runtime or generated by user input, cannot contain special characters or whitespace, and cannot be split, concatenated or otherwise parsed. But this makes them safer to work with and limits the amount of parsing your program needs to do:
 
-        <blockquote class="twitter-tweet" data-lang="en"><p lang="en" dir="ltr">PSA: If a function accepts a string then it&#39;s a parser. Parsers are hard to get right and dangerous to get wrong. Write fewer of them.</p>&mdash; David R. MacIver (@DRMacIver) <a href="https://twitter.com/DRMacIver/status/862642573852258304">May 11, 2017</a></blockquote>
-    </p>
-    <p>
-        <strong>Critter supports relational programming.</strong> Tables are a core data type in Critter and are used where arrays, maps and sets would be in other languages. In addition to the expected map/filter/reduce functions, tables also support complex queries, set operations (union, intersection), and joins. Furthermore, because tables are lazily evaluated, they can be defined in terms of rules and used for Prolog-esque logic programming.
-    </p>
+    <h2 id="controlflowerrors">Control Flow &amp; Errors</h2>
+
+    <ul>
+    <li>do, try, guard (unless?)</li>
+
+    <li>defer, returns</li>
+    </ul>
+
+    <pre><code class="critter language-critter">
+        (x){
+            @try number(x)
+            @returns number
+            +(x 10)
+        }
+    </code></pre>
 </section>
 
-<section id="basic-types">
-    <h2>Basic types &amp; syntax</h2>
+<section id="parsers">
+    <h1>Parsers</h1>
 
-    <ol class="contents">
-        <li><a href="#basic-types--comments">Comments</a></li>
-        <li><a href="#basic-types--numbers">Numbers</a></li>
-        <li><a href="#basic-types--hashtags">Hashtags</a></li>
-        <li><a href="#basic-types--let">Let Bindings</a></li>
-        <li><a href="#basic-types--functions">Functions</a></li>
-        <li><a href="#basic-types--records">Records</a></li>
-        <li><a href="#basic-types--tables">Tables</a></li>
-        <li><a href="#basic-types--buffers">Buffers &amp; Strings</a></li>
-        <li><a href="#basic-types--modules">Modules</a></li>
-    </ol>
+    <blockquote class="twitter-tweet" data-lang="en"><p lang="en" dir="ltr">PSA: If a function accepts a string then it&#39;s a parser. Parsers are hard to get right and dangerous to get wrong. Write fewer of them.</p>&mdash; David R. MacIver (@DRMacIver) <a href="https://twitter.com/DRMacIver/status/862642573852258304">May 11, 2017</a></blockquote>
 
-    <h3 id="basic-types--comments">Comments</h3>
-    <p>Line comments begin with a semicolon.</p>
-    <div data-critter-lang>
-        ; this is a comment
-    </div>
-    <h3 id="basic-types--numbers">Numbers</h3>
-    <p>
-        Numbers are native JavaScript numbers. There are no literals for other bases (binary, octal) or scientific notation.
-    </p>
-    <div data-critter-lang>
-        123     ; integers
-        -456    ; negative
-        7.89    ; decimal
-        0x0F    ; hexadecimal
-    </div>
+    <p>Most scripting languages contain a lot of features for working with strings, but few have any built-in tools for actually parsing strings into structures; they encourage you to stay in unstructured string-land instead of transforming them into structured data.</p>
 
-    <h3 id="basic-types--hashtags">Hashtags</h3>
-    <p>
-        Hashtags are textual identifiers used for named function arguments, named record fields, and tags. They're similar to symbols in Ruby or keywords in Clojure, and are used in many places where strings are used in JavaScript. They can contain any characters except whitespace and the reserved characters <code>: . " ( ) [ ] { }</code>. Characters with multiple representations, such as <code>é</code>, are canonicalized into a standard form.
-    </p>
-    <div data-critter-lang>
-        #foo #1 #foo/bar #*=!> #🐹
-    </div>
+    <ul>
+    <li>parser combinators (like regex operators)</li>
 
-    <h3 id="basic-types--let">Let Bindings</h3>
-    <p>
-        Define bindings with the <code>let</code> keyword. Bindings have the same restriction as hashtags; additionally, bindings must not start with a digit or <code>-</code> followed by a digit.
-    </p>
-    <div data-critter-lang>
-        @let x := 123.45
-        @let y := #foo
-    </div>
+    <li>many work on any function that returns a Result</li>
+    </ul>
+</section>
 
-    <h3 id="basic-types--functions">Functions</h3>
+<section id="tables">
+    <h1>Tables &amp; Rules</h1>
 
-    <p>
-        Functions are defined with curly braces.
-    </p>
-    <div data-critter-lang>
-        @let fn := (x){ +(x 2) }
-    </div>
+    <p>Most of Critter's peers have types for lists, sets and key-value maps, but Critter offers <strong>tables</strong> for storing and processing relational data and <strong>rules</strong> for declaratively generating data.</p>
 
-    <p>
-        Critter employs a form of <a href="https://en.wikipedia.org/wiki/Uniform_Function_Call_Syntax">uniform function call syntax</a>:
-    </p>
-    <div data-critter-lang>
-        bar(foo(a b) c d)
-        ; is the same as
-        a.foo(b).bar(c d)
-    </div>
+    <ul>
+    <li>sql-ish select, where, sorted-by ...</li>
 
-    <p>
-        This also means that <strong>Critter does not have operators:</strong> mathematical operators are just regular functions, without operator precedence, character restrictions, or special syntax. They can be used prefix <code>+(1 2)</code> or infix <code>1.+(2)</code>.
-    </p>
-    <p>
-        Functions can take named arguments. Named arguments must come after unnamed arguments. A function with all named arguments will fail when called infix.
-    </p>
-    <div data-critter-lang>
-        @let func := (first second foo: foo-arg bar: bar-arg){
-            first.+(second).*(foo-arg)./(bar-arg)
-        }
-        ; can be called with
-        func(1 2 foo: 3 bar: 4)
-        1.func(2 foo: 3 bar: 4)
-        1.func(2 bar: 4 foo: 3)
-    </div>
-    <p>
-        There is a shorthand syntax for pattern-matching functions by their arguments.
-    </p>
-    <div data-critter-lang>
-        @case foo := (x){ +(x 2) }
-        @case foo := (x y){ +(x y) }
+    <li>rows one iterator (protocol)</li>
+    </ul>
 
-        foo(5)   ; evaluates to 7
-        foo(5 1) ; evaluates to 6
-    </div>
-
-    <h3 id="basic-types--records">Records</h3>
-    <p>
-        Records are mixed-type data structures with optionally-named fields. Records can be used as tuples, tagged variants, or simple hashes.
-    </p>
-    <div data-critter-lang>
-        ; positional fields
-        @let p := [100 200]
-        @let [x y] := p
-
-        ; named fields
-        @let p := [x: 100 y: 200]
-        @let [x: x y: y] := p
-        ; field punning
-        @let [::x ::y] := p
-
-        ; tagged variants &amp; pattern matching
-        @let result := [#ok 123.45]
-        @let matched := result.match([
-            ([#ok value]){ value }
-            (#nil){ 0 }
+    <pre><code class="critter language-critter">
+        @let edges := [#from #to].table([
+            [#charles #park]
+            [#park #downtown]
+            [#downtown #south]
         ])
-    </div>
 
-    <p>When destructuring, positional fields are mandatory, named fields are optional.</p>
-    <div data-critter-lang>
-        @let p := [100 200 foo: 300]
-        ; ok
-        @let [a b] := p
-        @let [c _ foo: d] := p
+        @let edges := [#from #to].rule((from to){
+            edges.and(edges.where([to: from from: to]))
+        })
 
-        ; error
-        @let [foo: e] := p
-        @let [f] := p
-        @let [g h i] := p
-    </div>
+        @let links := [#from #to].rule((from to){
+            or(edges.where([::from ::to])
+               and(edges.where([from: from       to: #between.?])
+                   edges.where([from: #between.? to: to])))
+        })
 
-    <p>Records can be applied across function arguments.</p>
-    <div data-critter-lang>
-        apply(fn [1 2 foo: 3])
-        ; is the same as
-        fn(1 2 foo: 3)
-    </div>
-
-    <h3 id="basic-types--tables">Tables</h3>
-
-    <h3 id="basic-types--buffers">Buffers &amp; Strings</h3>
-
-    <h3 id="basic-types--modules">Modules</h3>
-
+        links.where([from: #downtown]).rows
+        ;[
+        ;   [from: #downtown to: #park]
+        ;   [from: #downtown to: #charles]
+        ;   [from: #downtown to: #south]
+        ;]
+    </code></pre>
 </section>
 
-<section>
-    <h2 id="pattern-matching">Pattern matching &amp; conditionals</h2>
-    <p>
-        Pattern matching: destructuring records, <code>match(value patterns)</code>.
-    </p>
-    <p>
-        Instead of boolean true/false, Critter uses <code>[#ok value]</code> / <code>#nil</code> for logic. This means all logical functions can follow circuit-breaker patterns:
-    </p>
-    <div data-critter-lang>
-        3.<(4).<(5) ; [#ok 5]
+<section id="processes">
+    <h1>Processes &amp; State</h1>
 
-        3.<(2).<(5) ; #nil
+    <p>Critter is a functional language, but it does <em>not</em> require side effects to be threaded into the program's entry point as Haskell or Elm do. Critter idiomatically uses <strong>processes</strong> to encapsulate state and nondeterminism.</p>
 
-        [#ok a].and([#ok b]) ; [#ok b]
-        [#ok a].or([#ok b]) ; [#ok a]
-        [#ok 3].then((a){ +(a 1) }) ; [#ok 4]
-        #nil.then((a){ +(a 1) }).else({ 5 }) ; [#ok 5]
-    </div>
+    <ul>
+    <li>generators, date, random</li>
+
+    <li>logs, actors</li>
+
+    <li>atoms, stores</li>
+
+    <li><code>@await x := future</code></li>
+
+    <li><code>@on message := stream</code></li>
+    </ul>
 </section>
 
-<section>
-    <h2 id="error-handling">Error handling</h2>
+<section id="protocols">
+    <h1>Protocols</h1>
 
-    <p>
-        Syntax errors, invalid field access crash without recoverability. Crashes can be forced with the <code>exit</code> keyword.
-    </p>
+    <p>Critter has no notions of inheritance or type hierarchies, but it does allow data structures to conform to interfaces and <strong>protocols</strong> via the <code>proto</code> field. Records can implement the required, implementation-specific "methods" with functions stored on the appropriate <code>proto</code> field.</p>
 
-    <p>
-        APIs with recoverable failure use <code>[#ok value]</code> / <code>[#error value]</code> for error handling. Error variants are also "falsy" in conditionals.
-    </p>
+    <aside><p>
+        <code>proto</code> as a nod to both "prototypal inheritance" and "protocols."
+    </p></aside>
 
-    <p>
-        <code>try</code> keyword returns the error if the test fails, continues function if test succeeds
-    </p>
-    <div data-critter-lang>
-        @let fn := (a b){
-            @try a.<(3)
-            @try b.isa(#number)
-            b.+(a)
+    <pre><code class="critter language-critter">
+        ; protocol methods
+        ; foo.concat(bar) => foo::proto::concat(foo bar)
+        @def concat := method(#concat)
+        @def bind := method(#bind)
+
+        ; protocol static methods (no `self` argument)
+        ; foo.unit(bar) => foo::proto::unit(bar)
+        @def unit := static-method(#unit)
+        @def empty := static-method(#empty)
+
+        @def List = [
+            concat: (self right){
+                self.match([
+                    (#cons head tail){
+                        cons(head tail.concat(right))
+                    }
+                    (#nil){ right }
+                ])
+            }
+            bind: (self fn){
+                self.match([
+                    (#cons head tail){
+                        fn(head).concat(tail.bind(fn))
+                    }
+                    (#nil){ nil }
+                ])
+            }
+            unit: (value){ cons(value nil) }
+            empty: { nil }
+        ]
+        @def map := (self f){
+            self.bind((x){ self.unit(f(x)) })
         }
-    </div>
+        @def filter := (self f){
+            self.bind((x){ f(x).cond({ self.unit(x) } { self.empty }) })
+        }
+        @def filter-map (self f){
+            self.bind((x){ f(x).cond((y){ self.unit(y) } { self.empty }) })
+        }
+
+        @def cons = (head tail){ [#cons head tail proto: List] }
+        @def nil = [#nil proto: List]
+    </code></pre>
 </section>
 
-<section>
-    <h2 id="tables">Tables &amp; relations</h2>
+<section id="modules">
+    <h1>Modules &amp; the Compiler</h1>
+
+    <ul>
+    <li>script vs module semantics</li>
+
+    <li>modules can only have keywords at the top level, no side effects</li>
+
+    <li><code>@module</code>, <code>@import</code> etc</li>
+
+    <li><code>@def</code> for mutually-recursive</li>
+    </ul>
 </section>
 
-<section>
-    <h2 id="processes">Processes &amp; mutation</h2>
-</section>
+<section id="philosophy">
+    <h1>Philosophy</h1>
 
-<section>
-    <h2 id="metaprogramming">Metaprogramming</h2>
-</section>
+    <ul>
+    <li>hard to avoid low-information terms like "simple"</li>
 
-<section>
-    <h2 id="interop">JavaScript interop</h2>
+    <li>simple made easy</li>
+    </ul>
+
+    <h2 id="worseisbetter">Worse is Better</h2>
+
+    <h3 id="simplicity">Simplicity</h3>
+
+    <p>Critter has a lot of ideas composed from a handful of core types. It follows the principle "It is better to have 100 functions operate on one data structure than 10 functions on 10 data structures." This principle is the core philosophy from which the rest of the design follows.</p>
+
+    <h3 id="consistency">Consistency</h3>
+
+    <p>Critter enables syntactic diversity but largely enforces functional consistency -- e.g. a function call can be written multiple ways, but functions always work the same. In a handful of cases, consistency is sacrificed for simplicity; e.g. with module-level keywords.</p>
+
+    <h3 id="completeness">Completeness</h3>
+
+    <p>Critter is a small language, and eschews a lot of features and idioms that are common in other languages. It features an extensive standard library, but it is largely focused on supporting a functional programming style.</p>
+
+    <h3 id="correctness">Correctness</h3>
+
+    <p>Critter is dynamically typed; there is no "undefined behavior" but it makes few guarantees beyond generating valid JavaScript. Critter makes error handling and type correctness idiomatic, but it doesn't enforce them.</p>
 </section>
 
 <script async src="//platform.twitter.com/widgets.js" charset="utf-8"></script>
 <script type="text/javascript" src="highlighter.js"></script>
-
+<script>
+    const toc = document.querySelector('.main-contents .contents')
+    for (const section of document.querySelectorAll('section')) {
+        const title = section.querySelector('h1').innerText
+        toc.innerHTML += `<li><a href="#${section.id}">${title}</a></li>`
+    }
+</script>
 </body>
 </html>

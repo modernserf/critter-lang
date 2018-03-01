@@ -64,7 +64,7 @@ html {
   font-family: "Helvetica Neue", sans-serif;
 }
 
-header, section {
+header, section, .main-contents {
   padding: 12px;
   max-width: 960px;
   margin: 0 auto;
@@ -113,7 +113,18 @@ em {
 strong {
    font-weight: bold;
 }
-code {
+
+aside {
+    background-color: #eee;
+    padding: 1em 1em 0;
+    margin-bottom: 1em;
+    font-size: 0.9em;
+}
+aside p {
+    line-height: 1.2em;
+}
+
+p code {
     font-family: monospace;
     font-size: 0.8em;
     border: 1px solid #ccc;
@@ -124,14 +135,15 @@ code {
     white-space: nowrap;
 }
 /* code example styles */
-[data-critter-lang] {
-   font-family: monospace;
-   color: #aaa;
-   background-color: #333;
-   padding: 1em;
-   line-height: 24px;
-   margin-bottom: 12px;
-   white-space: pre-wrap;
+pre code {
+    display: block;
+    font-family: monospace;
+    color: #aaa;
+    background-color: #333;
+    padding: 1em;
+    line-height: 24px;
+    margin-bottom: 12px;
+    white-space: pre-wrap;
 }
 .syntax-HexNumber,
 .syntax-DecNumber,

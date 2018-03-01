@@ -15,7 +15,7 @@ function trimBlock (str) {
 }
 
 window.addEventListener('DOMContentLoaded', () => {
-    const nodes = Array.from(document.querySelectorAll('[data-critter-lang]'))
+    const nodes = Array.from(document.querySelectorAll('code.language-critter'))
     nodes.forEach((node) => {
         const html = highlight(trimBlock(node.textContent))
         node.innerHTML = html
