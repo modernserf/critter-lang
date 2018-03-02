@@ -35,7 +35,8 @@ export const print = match({
     Program: ({ body }) => body.map(print).join('\n'),
     // TODO: preserve alternate formattings
     // e.g. hex numbers, tag strings
-    Number: ({ value }) => value.toString(),
+    DecNumber: ({ value }) => value.toString(),
+    HexNumber: ({ value }) => '0x' + value.toString(16),
     String: ({ value }) => quote(value),
     Ident: ({ value }) => value,
     Record: ({ args }) => `[${printArgs(args)}]`,

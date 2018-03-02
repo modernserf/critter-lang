@@ -41,7 +41,8 @@ const traverseArgs = (args, prevScope) =>
             .map((value) => types.Field(key || i, value)))
 
 const check = match({
-    Number: (_, scope) => ok(types.Number(), scope),
+    HexNumber: (_, scope) => ok(types.Number(), scope),
+    DecNumber: (_, scope) => ok(types.Number(), scope),
     String: (_, scope) => ok(types.String(), scope),
 
     Ident: ({ value }, scope) =>

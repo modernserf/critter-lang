@@ -5,7 +5,8 @@ import { quote } from './quote'
 export const expand = match({
     Program: ({ body }) =>
         tags.Program(expandTopLevel(body)),
-    Number: id,
+    HexNumber: id,
+    DecNumber: id,
     String: id,
     Ident: id,
     FieldGet: ({ target, key }) =>
@@ -66,7 +67,8 @@ const matchLiteral = (x, binding) => ({
 
 const destructure = match({
     Ident: (x) => ({ binding: x, conditions: [] }),
-    Number: matchLiteral,
+    HexNumber: matchLiteral,
+    DecNumber: matchLiteral,
     String: matchLiteral,
     Record: ({ args }, binding) => ({
         binding,

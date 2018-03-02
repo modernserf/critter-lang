@@ -4,6 +4,7 @@ import { match } from './util'
 const record = (args) =>
     tags.Record(args.map((arg) => tags.Arg(arg)))
 
+const lit = (type) => ({ type })
 const tagged = (token, ...body) =>
     record([tags.String(token.type)].concat(body))
 
@@ -17,7 +18,8 @@ const quoteArgs = (args) =>
     ))
 
 export const quote = match({
-    Number: (token) => tagged(token, tags.Number(token.value)),
+    DecNumber: (token) => tagged(lit('Number'), tags.DecNumber(token.value)),
+    HexNumber: (token) => tagged(lit('Number'), tags.HexNumber(token.value)),
     String: (token) => tagged(token, tags.String(token.value)),
     Ident: (token) => tagged(token, tags.String(token.value)),
     FieldGet: (token) =>

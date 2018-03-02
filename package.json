@@ -28,6 +28,9 @@
     "build-highlighter": "rollup src/highlighter.js --f iife | minify --out-file docs/highlighter.js",
     "build": "npm run build-highlighter"
   },
+  "jest": {
+      "setupTestFrameworkScriptFile": "./src/test-helpers.js"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/modernserf/critter-lang.git"

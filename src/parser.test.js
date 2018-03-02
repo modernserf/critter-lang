@@ -1,7 +1,7 @@
 import { expr, tags } from './parser'
 const {
     FieldGet, Record, FnExp, FnCall, DotFnCall, Arg, NamedArg, Keyword,
-    Number: Num, String: Str, Ident,
+    DecNumber: Num, HexNumber, String: Str, Ident,
 } = tags
 
 it('parses a number', () => {
@@ -10,7 +10,7 @@ it('parses a number', () => {
     expect(expr('-123.45'))
         .toMatchObject(Num(-123.45))
     expect(expr('0xCAFEBABE'))
-        .toMatchObject(Num(0xCAFEBABE))
+        .toMatchObject(HexNumber(0xCAFEBABE))
 })
 
 it('parses a quoted string', () => {

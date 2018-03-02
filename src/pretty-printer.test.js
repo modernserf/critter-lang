@@ -8,7 +8,7 @@ it('prints primitives', () => {
     expect(p(`123`)).toEqual(`123`)
     expect(p(`"foo \\"bar\\" baz"`)).toEqual(`"foo \\"bar\\" baz"`)
     // TODO: preserve alternate formattings
-    expect(p(`0x0F`)).toEqual(`15`)
+    expect(p(`0x0F`)).toEqual(`0xf`)
     expect(p(`#foo`)).toEqual('"foo"')
 })
 

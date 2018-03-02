@@ -4,7 +4,7 @@ import { expand } from './expander'
 import { pipe } from './util'
 const {
     FieldGet, Record, FnExp, FnCall, Arg, NamedArg, Keyword,
-    Number: Num, String: Str, Ident,
+    DecNumber: Num, String: Str, Ident,
 } = tags
 
 const compile = pipe([expand, c])

@@ -9,7 +9,8 @@ const tagSeq = (tagger) => (init, args) =>
 
 export const tags = tagConstructors([
     ['Program', 'body'],
-    ['Number', 'value'],
+    ['DecNumber', 'value'],
+    ['HexNumber', 'value'],
     ['String', 'value'],
     ['Ident', 'value'],
     ['FieldGet', 'target', 'key'],
@@ -26,7 +27,7 @@ const token = (type) => P.match((x) => x.type === type)
 
 const number = P.alt(
     token('HexNumber'), token('DecNumber')
-).map((x) => x.value)
+)
 
 const string = P.alt(
     token('TaggedString'), token('QuotedString')
@@ -35,7 +36,7 @@ const string = P.alt(
 const ident = token('Ident')
 
 const terminal = P.alt(
-    number.map(tags.Number),
+    number,
     string.map(tags.String),
     ident
 )
@@ -58,7 +59,7 @@ const record = P.wrapped(doublePad(arg), token('LBrk'), token('RBrk'))
     .map(tags.Record)
 
 const field = P.seq(
-    _, token('FieldOp'), P.alt(number, ident.map((x) => x.value))
+    _, token('FieldOp'), P.alt(number.map((x) => x.value), ident.map((x) => x.value))
 ).map((x) => x[2])
 
 const fieldGet = P.seq(
@@ -79,7 +80,7 @@ const bindRecord = P.wrapped(doublePad(bindArg), token('LBrk'), token('RBrk'))
 
 const binding = P.alt(
     bindRecord.map(tags.Record),
-    number.map(tags.Number),
+    number,
     string.map(tags.String),
     ident
 )

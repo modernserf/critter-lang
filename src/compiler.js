@@ -2,7 +2,8 @@ import { pipe, match } from './util'
 
 export const compile = match({
     Program: ({ body }) => body.map(compileBody).join(';\n'),
-    Number: ({ value }) => value.toString(),
+    HexNumber: ({ value }) => value.toString(),
+    DecNumber: ({ value }) => value.toString(),
     String: ({ value }) => quote(value),
     Ident: ({ value }) => ident(value),
     Record: ({ args }) => obj(args),
