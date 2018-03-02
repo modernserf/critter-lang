@@ -43,7 +43,8 @@ const traverseArgs = (args, prevScope) =>
 const check = match({
     HexNumber: (_, scope) => ok(types.Number(), scope),
     DecNumber: (_, scope) => ok(types.Number(), scope),
-    String: (_, scope) => ok(types.String(), scope),
+    QuotedString: (_, scope) => ok(types.String(), scope),
+    TaggedString: (_, scope) => ok(types.String(), scope),
 
     Ident: ({ value }, scope) =>
         scope[value]

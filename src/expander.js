@@ -7,7 +7,8 @@ export const expand = match({
         tags.Program(expandTopLevel(body)),
     HexNumber: id,
     DecNumber: id,
-    String: id,
+    QuotedString: id,
+    TaggedString: id,
     Ident: id,
     FieldGet: ({ target, key }) =>
         tags.FieldGet(expand(target), key),
@@ -69,7 +70,8 @@ const destructure = match({
     Ident: (x) => ({ binding: x, conditions: [] }),
     HexNumber: matchLiteral,
     DecNumber: matchLiteral,
-    String: matchLiteral,
+    QuotedString: matchLiteral,
+    TaggedString: matchLiteral,
     Record: ({ args }, binding) => ({
         binding,
         conditions: args.reduce((coll, arg, j) => {
@@ -127,7 +129,7 @@ function singleExpression (body) {
     const copy = body.slice(0)
     // TODO: don't append [#ok], pass `id` as value
     const init = (copy[copy.length - 1].type === 'Keyword')
-        ? tags.Record([tags.Arg(tags.String('ok'))])
+        ? tags.Record([tags.Arg(tags.TaggedString('ok'))])
         : expand(copy.pop())
 
     return copy.reduceRight((after, bef) => bef.type === 'Keyword'

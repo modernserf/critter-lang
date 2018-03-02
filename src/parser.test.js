@@ -1,7 +1,7 @@
 import { expr, tags } from './parser'
 const {
     FieldGet, Record, FnExp, FnCall, DotFnCall, Arg, NamedArg, Keyword,
-    DecNumber: Num, HexNumber, String: Str, Ident,
+    DecNumber: Num, HexNumber, QuotedString, TaggedString: Str, Ident,
 } = tags
 
 it('parses a number', () => {
@@ -15,9 +15,9 @@ it('parses a number', () => {
 
 it('parses a quoted string', () => {
     expect(expr('"foo bar baz"'))
-        .toMatchObject(Str('foo bar baz'))
+        .toMatchObject(QuotedString('foo bar baz'))
     expect(expr('"foo bar \\"quoted\\" baz"'))
-        .toMatchObject(Str('foo bar "quoted" baz'))
+        .toMatchObject(QuotedString('foo bar "quoted" baz'))
 })
 
 it('parses a tagged string', () => {
@@ -40,7 +40,7 @@ it('parses a record', () => {
         expr('[bar ["baz"] 123.45]')).toMatchObject(
         Record([
             Arg(Ident('bar')),
-            Arg(Record([ Arg(Str('baz')) ])),
+            Arg(Record([ Arg(QuotedString('baz')) ])),
             Arg(Num(123.45)),
         ])
     )
@@ -49,7 +49,7 @@ it('parses a record', () => {
         expr('[bar "baz" quux: 123.45 snerf: snerf]')).toMatchObject(
         Record([
             Arg(Ident('bar')),
-            Arg(Str('baz')),
+            Arg(QuotedString('baz')),
             NamedArg('quux', Num(123.45)),
             NamedArg('snerf', Ident('snerf')),
         ])
@@ -85,7 +85,7 @@ it('parses a fn call', () => {
     expect(expr('foo(bar "baz" 123.45)'))
         .toMatchObject(FnCall(Ident('foo'), [
             Arg(Ident('bar')),
-            Arg(Str('baz')),
+            Arg(QuotedString('baz')),
             Arg(Num(123.45)),
         ])
         )
@@ -93,7 +93,7 @@ it('parses a fn call', () => {
     expect(expr('foo(bar "baz" quux: 123.45 snerf: snerf)'))
         .toMatchObject(FnCall(Ident('foo'), [
             Arg(Ident('bar')),
-            Arg(Str('baz')),
+            Arg(QuotedString('baz')),
             NamedArg('quux', Num(123.45)),
             NamedArg('snerf', Ident('snerf')),
         ])

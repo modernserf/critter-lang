@@ -11,7 +11,8 @@ export const tags = tagConstructors([
     ['Program', 'body'],
     ['DecNumber', 'value'],
     ['HexNumber', 'value'],
-    ['String', 'value'],
+    ['QuotedString', 'value'],
+    ['TaggedString', 'value'],
     ['Ident', 'value'],
     ['FieldGet', 'target', 'key'],
     ['Record', 'args'],
@@ -25,19 +26,15 @@ export const tags = tagConstructors([
 
 const token = (type) => P.match((x) => x.type === type)
 
-const number = P.alt(
-    token('HexNumber'), token('DecNumber')
-)
+const number = P.alt(token('HexNumber'), token('DecNumber'))
 
-const string = P.alt(
-    token('TaggedString'), token('QuotedString')
-).map((x) => x.value)
+const string = P.alt(token('TaggedString'), token('QuotedString'))
 
 const ident = token('Ident')
 
 const terminal = P.alt(
     number,
-    string.map(tags.String),
+    string,
     ident
 )
 
@@ -80,9 +77,7 @@ const bindRecord = P.wrapped(doublePad(bindArg), token('LBrk'), token('RBrk'))
 
 const binding = P.alt(
     bindRecord.map(tags.Record),
-    number,
-    string.map(tags.String),
-    ident
+    terminal,
 )
 
 const fnParams = P.wrapped(

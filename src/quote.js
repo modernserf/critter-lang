@@ -6,7 +6,7 @@ const record = (args) =>
 
 const lit = (type) => ({ type })
 const tagged = (token, ...body) =>
-    record([tags.String(token.type)].concat(body))
+    record([tags.TaggedString(token.type)].concat(body))
 
 // when quoting, do not quote arg tags
 // [#Record [[#Arg [#Ident #foo]] [#NamedArg #bar [#Ident #bar]]]] =>
@@ -18,19 +18,24 @@ const quoteArgs = (args) =>
     ))
 
 export const quote = match({
-    DecNumber: (token) => tagged(lit('Number'), tags.DecNumber(token.value)),
-    HexNumber: (token) => tagged(lit('Number'), tags.HexNumber(token.value)),
-    String: (token) => tagged(token, tags.String(token.value)),
-    Ident: (token) => tagged(token, tags.String(token.value)),
+    DecNumber: (token) =>
+        tagged(lit('Number'), tags.DecNumber(token.value)),
+    HexNumber: (token) =>
+        tagged(lit('Number'), tags.HexNumber(token.value)),
+    TaggedString: (token) =>
+        tagged(lit('String'), tags.TaggedString(token.value)),
+    QuotedString: (token) =>
+        tagged(lit('String'), tags.QuotedString(token.value)),
+    Ident: (token) => tagged(token, tags.TaggedString(token.value)),
     FieldGet: (token) =>
-        tagged(token, quote(token.target), tags.String(token.key)),
+        tagged(token, quote(token.target), tags.TaggedString(token.key)),
     Record: (token) => tagged(token, quoteArgs(token.args)),
     FnCall: (token) =>
         tagged(token, quote(token.callee), quoteArgs(token.args)),
     FnExp: (token) =>
         tagged(token, quoteArgs(token.params), record(token.body.map(quote))),
     Keyword: (token) => tags.Record([
-        tags.Arg(tags.String(token.type)),
+        tags.Arg(tags.TaggedString(token.type)),
         tags.Arg(quote(token.keyword)),
         tags.Arg(quote(token.value)),
         token.assignment

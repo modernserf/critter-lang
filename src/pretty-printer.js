@@ -33,11 +33,10 @@ const printArgs = (args) => {
 
 export const print = match({
     Program: ({ body }) => body.map(print).join('\n'),
-    // TODO: preserve alternate formattings
-    // e.g. hex numbers, tag strings
     DecNumber: ({ value }) => value.toString(),
     HexNumber: ({ value }) => '0x' + value.toString(16),
-    String: ({ value }) => quote(value),
+    QuotedString: ({ value }) => quote(value),
+    TaggedString: ({ value }) => '#' + value,
     Ident: ({ value }) => value,
     Record: ({ args }) => `[${printArgs(args)}]`,
     FnCall: ({ callee, args }) => `${print(callee)}(${printArgs(args)})`,
