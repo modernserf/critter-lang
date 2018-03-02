@@ -1,71 +1,76 @@
-import * as P from './combinators'
-import { flatten } from './util'
+import {
+    ok, seqs, alts, all, plus, maybe, notOne, drop, wrappedWith,
+    flatMapResult, chars, altChars, range, digit, whitespace, parse,
+} from './goal'
 
-const tag = (type) => (value) => ({ type, value })
+const tag = (type, f) => (p) =>
+    f({ ...p, result: [] }).then((nextP) => ok({
+        ...nextP,
+        result: p.result.concat([{
+            type,
+            value: nextP.result.join(''),
+            from: p.index,
+            to: nextP.index,
+        }]),
+    }))
 
-const join = (xs) => xs.join('')
-
-const whitespace = P.plus(P.whitespace)
-
-const comment = P.seq(
-    P.chars(';'),
-    P.all(P.notOneOf(P.chars('\n'))).map(join)
+const comment = seqs(
+    drop(chars(';')),
+    all(notOne(chars('\n')))
 )
 
-const hexNumber = P.seq(
-    P.chars('0x'),
-    P.plus(P.alt(P.digit, P.range('A', 'F'), P.range('a', 'f'))).map(join)
-).map(join)
-
-const digits = P.seq(
-    P.digit,
-    P.all(P.alt(
-        P.chars('_').map((x) => ''),
-        P.digit
-    )).map(join)
-).map(join)
-
-const decNumber = P.seq(
-    P.maybe(P.chars('-')),
-    digits,
-    P.maybe(P.seq(P.chars('.'), digits)).map(flatten)
-).map(flatten)
-    .map(join)
-
-const ident = P.plus(P.notOneOf(
-    P.whitespace,
-    P.altChars('.:#,;@[]{}()]"')
-)).map(join)
-
-const tagString = P.seq(P.chars('#'), ident)
-
-const quote = P.chars('"')
-const quoteEsc = P.chars('\\"').map(() => '"')
-const notQuote = P.notOneOf(quote)
-const stringChars = P.all(P.alt(quoteEsc, notQuote)).map(join)
-const quotedString = P.seq(quote, stringChars, quote)
-
-const token = P.alt(
-    P.chars('::').map(tag('FieldOp')),
-    P.chars(':=').map(tag('Assignment')),
-    P.chars(':').map(tag('Colon')),
-    P.chars('[').map(tag('LBrk')),
-    P.chars(']').map(tag('RBrk')),
-    P.chars('{').map(tag('LCurly')),
-    P.chars('}').map(tag('RCurly')),
-    P.chars('(').map(tag('LParen')),
-    P.chars(')').map(tag('RParen')),
-    P.chars('@').map(tag('At')),
-    P.chars('.').map(tag('Dot')),
-    whitespace.map(tag('Whitespace')),
-    comment.map(tag('Comment')),
-    hexNumber.map(tag('HexNumber')),
-    decNumber.map(tag('DecNumber')),
-    tagString.map(tag('TaggedString')),
-    quotedString.map(tag('QuotedString')),
-    ident.map(tag('Ident')),
+const hexLower = range('A', 'F')
+const hexUpper = range('a', 'f')
+const hexNumber = seqs(
+    chars('0x'),
+    plus(alts(digit, hexLower, hexUpper))
 )
 
-const tokenSeq = P.all(token)
+const decDigits = seqs(
+    digit,
+    all(alts(drop(chars('_')), digit))
+)
+const decNumber = seqs(
+    maybe(chars('-')),
+    decDigits,
+    maybe(seqs(chars('.'), decDigits))
+)
 
-export const tokenize = (str) => tokenSeq.parseAll(Array.from(str))
+const specialChars = altChars('.:#,;@[]{}()]"')
+const ident = plus(notOne(alts(whitespace, specialChars)))
+
+const tagString = seqs(
+    drop(chars('#')),
+    ident
+)
+
+const quote = chars('"')
+const quoteEsc = flatMapResult(chars('\\"'), () => ['"'])
+const notQuote = notOne(quote)
+const stringChars = all(alts(quoteEsc, notQuote))
+const quotedString = wrappedWith(stringChars, quote)
+
+const token = alts(
+    tag('FieldOp', chars('::')),
+    tag('Assignment', chars(':=')),
+    tag('Colon', chars(':')),
+    tag('LBrk', chars('[')),
+    tag('RBrk', chars(']')),
+    tag('LCurly', chars('{')),
+    tag('RCurly', chars('}')),
+    tag('LParen', chars('(')),
+    tag('RParen', chars(')')),
+    tag('At', chars('@')),
+    tag('Dot', chars('.')),
+    tag('Whitespace', plus(whitespace)),
+    tag('Comment', comment),
+    tag('HexNumber', hexNumber),
+    tag('DecNumber', decNumber),
+    tag('TaggedString', tagString),
+    tag('QuotedString', quotedString),
+    tag('Ident', ident),
+)
+
+const tokenSeq = all(token)
+
+export const tokenize = (str) => parse(tokenSeq, Array.from(str)).value

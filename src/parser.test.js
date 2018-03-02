@@ -30,9 +30,6 @@ it('parses an identifier', () => {
         .toEqual(Ident('foo'))
     expect(expr('++=>'))
         .toEqual(Ident('++=>'))
-
-    expect(expr('foo bar'))
-        .toEqual(null)
 })
 
 it('parses a record', () => {

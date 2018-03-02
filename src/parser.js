@@ -31,7 +31,7 @@ const number = P.alt(
 
 const string = P.alt(
     token('TaggedString'), token('QuotedString')
-).map((x) => x.value[1])
+).map((x) => x.value)
 
 const ident = token('Ident').map((x) => x.value)
 

@@ -114,6 +114,7 @@ const matchOneUnsafe = (f) => (p) =>
 
 export const any = seq(hasInput, matchOneUnsafe(ok))
 export const matchOne = (f) => seq(hasInput, matchOneUnsafe(f))
+export const notOne = (f) => seq(not(f), any)
 export const eq = (val) => matchOne((x) => ops.eq(val, x))
 
 export const flatMapResult = (parser, flatMapper) => (p) =>
@@ -138,6 +139,37 @@ export const wrappedWith = (body, l, r = null) =>
 
 export const sepBy = (content, separator) =>
     seq(content, all(seq(drop(separator), content)))
+
+// string-specific parsers
+
+const _join = (xs) => xs.join('')
+
+export const chars = (str) => flatMapResult(
+    seqs(...Array.from(str).map(eq)),
+    _join
+)
+export const altChars = (str) =>
+    alts(...Array.from(str).map(eq))
+
+// ascii codes
+export const range = (start, end) => {
+    const startCode = start.codePointAt(0)
+    const endCode = end.codePointAt(0)
+    return matchOne((x) => {
+        if (!x.codePointAt) { return error('not_a_char') }
+        const c = x.codePointAt(0)
+        return c >= startCode && c <= endCode
+            ? ok(x)
+            : error('out_of_range')
+    })
+}
+
+export const digit = range('0', '9')
+export const uppercase = range('A', 'Z')
+export const lowercase = range('a', 'z')
+export const letter = either(uppercase, lowercase)
+export const whitespace = matchOne((x) =>
+    /\s/.test(x) ? ok(x) : error('not_whitespace'))
 
 export const trace = (f) => (p) =>
     f(p).then((nextP) => ok({

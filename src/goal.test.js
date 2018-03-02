@@ -1,6 +1,7 @@
 import {
     ok, error, ops, either, parse, never, any, matchOne, eq, not, both,
     alts, seqs, start, end, all, flatMapResult, wrappedWith, sepBy,
+    chars, altChars, range,
     view, set, lensProp, over, iso,
 } from './goal'
 
@@ -119,6 +120,28 @@ describe('parser combinators', () => {
         const parser = sepBy(notComma, eq(','))
         expect(parse(parser, Array.from('foo,bar,baz')).value).toEqual(['foo', 'bar', 'baz'])
         expect(parse(parser, Array.from('foo bar baz')).value).toEqual(['foo bar baz'])
+    })
+})
+
+describe('string-specific parsers', () => {
+    it('chars', () => {
+        const p = chars('foo')
+        expect((parse(p, Array.from('foobar')).ok)).toBe(true)
+        expect((parse(p, Array.from('FOO')).ok)).toBe(false)
+    })
+    it('altChars', () => {
+        const p = altChars('abcde')
+        expect((parse(p, ['a']).ok)).toBe(true)
+        expect((parse(p, ['e']).ok)).toBe(true)
+        expect((parse(p, []).ok)).toBe(false)
+        expect((parse(p, ['A']).ok)).toBe(false)
+    })
+    it('range', () => {
+        const p = range('1', '5')
+        expect((parse(p, ['1']).ok)).toBe(true)
+        expect((parse(p, ['3']).ok)).toBe(true)
+        expect((parse(p, ['5']).ok)).toBe(true)
+        expect((parse(p, ['8']).ok)).toBe(false)
     })
 })
 
