@@ -6,38 +6,38 @@ const {
 
 it('parses a number', () => {
     expect(expr('123'))
-        .toEqual(Num(123))
+        .toMatchObject(Num(123))
     expect(expr('-123.45'))
-        .toEqual(Num(-123.45))
+        .toMatchObject(Num(-123.45))
     expect(expr('0xCAFEBABE'))
-        .toEqual(Num(0xCAFEBABE))
+        .toMatchObject(Num(0xCAFEBABE))
 })
 
 it('parses a quoted string', () => {
     expect(expr('"foo bar baz"'))
-        .toEqual(Str('foo bar baz'))
+        .toMatchObject(Str('foo bar baz'))
     expect(expr('"foo bar \\"quoted\\" baz"'))
-        .toEqual(Str('foo bar "quoted" baz'))
+        .toMatchObject(Str('foo bar "quoted" baz'))
 })
 
 it('parses a tagged string', () => {
     expect(expr('#foo'))
-        .toEqual(Str('foo'))
+        .toMatchObject(Str('foo'))
 })
 
 it('parses an identifier', () => {
     expect(expr('foo'))
-        .toEqual(Ident('foo'))
+        .toMatchObject(Ident('foo'))
     expect(expr('++=>'))
-        .toEqual(Ident('++=>'))
+        .toMatchObject(Ident('++=>'))
 })
 
 it('parses a record', () => {
     expect(expr('[]'))
-        .toEqual(Record([]))
+        .toMatchObject(Record([]))
 
     expect(
-        expr('[bar ["baz"] 123.45]')).toEqual(
+        expr('[bar ["baz"] 123.45]')).toMatchObject(
         Record([
             Arg(Ident('bar')),
             Arg(Record([ Arg(Str('baz')) ])),
@@ -46,7 +46,7 @@ it('parses a record', () => {
     )
 
     expect(
-        expr('[bar "baz" quux: 123.45 snerf: snerf]')).toEqual(
+        expr('[bar "baz" quux: 123.45 snerf: snerf]')).toMatchObject(
         Record([
             Arg(Ident('bar')),
             Arg(Str('baz')),
@@ -58,7 +58,7 @@ it('parses a record', () => {
 
 it('parses field access', () => {
     expect(
-        expr('foo::bar::baz::0')).toEqual(
+        expr('foo::bar::baz::0')).toMatchObject(
         FieldGet(
             FieldGet(
                 FieldGet(Ident('foo'), 'bar'),
@@ -70,7 +70,7 @@ it('parses field access', () => {
 it('parses field access on a record literal', () => {
     expect(
         expr('[#foo]::0')
-    ).toEqual(
+    ).toMatchObject(
         FieldGet(
             Record([Arg(Str('foo'))]),
             0
@@ -80,10 +80,10 @@ it('parses field access on a record literal', () => {
 
 it('parses a fn call', () => {
     expect(expr('foo()'))
-        .toEqual(FnCall(Ident('foo'), []))
+        .toMatchObject(FnCall(Ident('foo'), []))
 
     expect(expr('foo(bar "baz" 123.45)'))
-        .toEqual(FnCall(Ident('foo'), [
+        .toMatchObject(FnCall(Ident('foo'), [
             Arg(Ident('bar')),
             Arg(Str('baz')),
             Arg(Num(123.45)),
@@ -91,7 +91,7 @@ it('parses a fn call', () => {
         )
 
     expect(expr('foo(bar "baz" quux: 123.45 snerf: snerf)'))
-        .toEqual(FnCall(Ident('foo'), [
+        .toMatchObject(FnCall(Ident('foo'), [
             Arg(Ident('bar')),
             Arg(Str('baz')),
             NamedArg('quux', Num(123.45)),
@@ -102,7 +102,7 @@ it('parses a fn call', () => {
 
 it('function call sequence', () => {
     expect(
-        expr('foo()()')).toEqual(
+        expr('foo()()')).toMatchObject(
         FnCall(
             FnCall(Ident('foo'), []),
             [])
@@ -111,7 +111,7 @@ it('function call sequence', () => {
 
 it('function definition, no args', () => {
     expect(
-        expr(`{ x }`)).toEqual(
+        expr(`{ x }`)).toMatchObject(
         FnExp([], [
             Ident('x'),
         ])
@@ -120,7 +120,7 @@ it('function definition, no args', () => {
 
 it('function definition, with args', () => {
     expect(
-        expr(`(x foo: y){ [x y] }`)).toEqual(
+        expr(`(x foo: y){ [x y] }`)).toMatchObject(
         FnExp([
             Arg(Ident('x')),
             NamedArg('foo', Ident('y')),
@@ -135,7 +135,7 @@ it('function definition, with args', () => {
 
 it('function definition, punned named arg', () => {
     expect(
-        expr(`(x ::foo){ [x foo] }`)).toEqual(
+        expr(`(x ::foo){ [x foo] }`)).toMatchObject(
         FnExp([
             Arg(Ident('x')),
             NamedArg('foo', Ident('foo')),
@@ -151,7 +151,7 @@ it('function definition, punned named arg', () => {
 it('parses an iife', () => {
     expect(
         expr(`(x){ x }(1)`)
-    ).toEqual(
+    ).toMatchObject(
         FnCall(
             FnExp([Arg(Ident('x'))], [Ident('x')]),
             [Arg(Num(1))]
@@ -165,7 +165,7 @@ it('destructures function args', () => {
     //
     expect(
         expr(`([foo bar]){ [bar foo] }`)
-    ).toEqual(
+    ).toMatchObject(
         FnExp([Arg(Record([Arg(Ident('foo')), Arg(Ident('bar'))]))], [
             Record([Arg(Ident('bar')), Arg(Ident('foo'))]),
         ])
@@ -174,7 +174,7 @@ it('destructures function args', () => {
 
 it('dot functions', () => {
     expect(expr(`foo.bar(baz).quux`))
-        .toEqual(DotFnCall(Ident('quux'),
+        .toMatchObject(DotFnCall(Ident('quux'),
             DotFnCall(Ident('bar'),
                 Ident('foo'),
                 [Arg(Ident('baz'))]),
@@ -184,14 +184,14 @@ it('dot functions', () => {
 
 it('keywords', () => {
     expect(expr('@foo bar(baz)'))
-        .toEqual(Keyword(Ident('foo'), null,
+        .toMatchObject(Keyword(Ident('foo'), null,
             FnCall(Ident('bar'), [Arg(Ident('baz'))]))
         )
 })
 
 it('keyword assignment', () => {
     expect(
-        expr('@foo(quux) x := bar(baz)')).toEqual(
+        expr('@foo(quux) x := bar(baz)')).toMatchObject(
         Keyword(
             FnCall(Ident('foo'), [Arg(Ident('quux'))]),
             Ident('x'),
@@ -203,7 +203,7 @@ it('keyword assignment', () => {
 
 it('precedence', () => {
     expect(
-        expr('@foo::bar(baz).quux::snerf x := xyzzy()')).toEqual(
+        expr('@foo::bar(baz).quux::snerf x := xyzzy()')).toMatchObject(
         Keyword(
             DotFnCall(FieldGet(Ident('quux'), 'snerf'),
                 FnCall(FieldGet(Ident('foo'), 'bar'), [
@@ -223,7 +223,7 @@ it('parses deeply nested let bindings', () => {
                 f(x x)
             }((a b){ [a::foo b::bar] })
         }`)
-    ).toEqual(
+    ).toMatchObject(
         FnExp([Arg(Ident('x'))], [
             FnCall(
                 FnExp([Arg(Ident('f'))], [
@@ -254,7 +254,7 @@ it('parses the flat-ok definition', () => {
                     ok(m)
                 })
             }`)
-    ).toEqual(
+    ).toMatchObject(
         Keyword(Ident('let'), Ident('flat-ok'), FnExp([
             Arg(Ident('m')),
         ], [

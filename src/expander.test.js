@@ -1,13 +1,31 @@
 import { expand } from './expander'
 import { parse } from './parser'
 
+// the cursor positions are not expected to match.
+expect.extend({
+    toMatchParseResult (received, arg) {
+        if (received instanceof Object && arg instanceof Object) {
+            for (const key in received) {
+                if (['from', 'to'].includes(key)) { continue }
+                expect(received[key]).toMatchParseResult(arg[key])
+            }
+        } else {
+            expect(received).toEqual(arg)
+        }
+        return {
+            pass: true,
+            message: () => `expected ${received} not to have matched ${arg}`,
+        }
+    },
+})
+
 it('is idempotent on simple values', () => {
     const x = parse('123')
-    expect(expand(x)).toEqual(x)
+    expect(expand(x)).toMatchParseResult(x)
     const y = parse('#foo')
-    expect(expand(y)).toEqual(y)
+    expect(expand(y)).toMatchParseResult(y)
     const z = parse('[foo: 1 bar: 2]::bar')
-    expect(expand(z)).toEqual(z)
+    expect(expand(z)).toMatchParseResult(z)
 })
 
 it('throws on duplicate fields', () => {
@@ -26,7 +44,7 @@ it('expands sequences into callbacks', () => {
                 z
             }
         `))
-    ).toEqual(parse(`
+    ).toMatchParseResult(parse(`
         {
             let(1 (x){
                 let(2 (y){
@@ -46,7 +64,7 @@ it('expands pattern-matching function args into try blocks', () => {
                 x
             }
         `))
-    ).toEqual(expand(parse(`
+    ).toMatchParseResult(expand(parse(`
         (_0 _1 x){
             @try ==(_0 #foo)
             @try ==(_1 1)
@@ -60,7 +78,7 @@ it('destructures function args', () => {
         expand(parse(`
             ([l r]){ [r l] }
         `))
-    ).toEqual(expand(parse(`
+    ).toMatchParseResult(expand(parse(`
         (_0){
             @let l := _0::0
             @let r := _0::1
@@ -72,7 +90,7 @@ it('destructures function args', () => {
 it('destructures and pattern matches', () => {
     expect(expand(parse(`
         ([#bar x]){ [x x x] }
-    `))).toEqual(expand(parse(`
+    `))).toMatchParseResult(expand(parse(`
         (_0){
             @try ==(_0::0 #bar)
             @let x := _0::1

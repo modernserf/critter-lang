@@ -32,12 +32,12 @@ const string = P.alt(
     token('TaggedString'), token('QuotedString')
 ).map((x) => x.value)
 
-const ident = token('Ident').map((x) => x.value)
+const ident = token('Ident')
 
 const terminal = P.alt(
     number.map(tags.Number),
     string.map(tags.String),
-    ident.map(tags.Ident)
+    ident
 )
 
 const space = P.alt(token('Whitespace'), token('Comment'))
@@ -48,7 +48,7 @@ const doublePad = (p) => P.wrapped(P.sepBy(p, __), _)
 
 const createArgsFor = (expr) => {
     const namedArg = P.seq(ident, token('Colon'), _, expr)
-        .map(([key, _, __, value]) => tags.NamedArg(key, value))
+        .map(([i, _, __, value]) => tags.NamedArg(i.value, value))
     const indexArg = expr.map(tags.Arg)
     return P.alt(namedArg, indexArg)
 }
@@ -58,7 +58,7 @@ const record = P.wrapped(doublePad(arg), token('LBrk'), token('RBrk'))
     .map(tags.Record)
 
 const field = P.seq(
-    _, token('FieldOp'), P.alt(number, ident)
+    _, token('FieldOp'), P.alt(number, ident.map((x) => x.value))
 ).map((x) => x[2])
 
 const fieldGet = P.seq(
@@ -71,7 +71,7 @@ const fieldGet = P.seq(
 // includes punning of `[foo: foo]` as `[::foo]`
 // TODO: expand "punning" in expander, not here
 const _bindArg = P.lazy(() => createArgsFor(binding))
-const punArg = P.seq(token('FieldOp'), ident)
+const punArg = P.seq(token('FieldOp'), ident.map((x) => x.value))
     .map(([_, key]) => tags.NamedArg(key, tags.Ident(key)))
 const bindArg = P.alt(_bindArg, punArg)
 
@@ -81,7 +81,7 @@ const binding = P.alt(
     bindRecord.map(tags.Record),
     number.map(tags.Number),
     string.map(tags.String),
-    ident.map(tags.Ident)
+    ident
 )
 
 const fnParams = P.wrapped(
