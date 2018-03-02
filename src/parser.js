@@ -5,8 +5,7 @@ import * as P from './combinators'
 const tagSeq = (tagger) => (init, args) =>
     args.reduce((acc, item) => tagger(acc, item), init)
 
-// TODO: preserve whitespace, comments,
-// original number/string format for pretty-printing?
+// TODO: propagate indexes for pretty-printing
 
 export const tags = tagConstructors([
     ['Program', 'body'],
@@ -27,7 +26,7 @@ const token = (type) => P.match((x) => x.type === type)
 
 const number = P.alt(
     token('HexNumber'), token('DecNumber')
-).map((x) => Number(x.value))
+).map((x) => x.value)
 
 const string = P.alt(
     token('TaggedString'), token('QuotedString')

@@ -1,18 +1,8 @@
 import {
     ok, seqs, alts, all, plus, maybe, notOne, drop, wrappedWith,
-    flatMapResult, chars, altChars, range, digit, whitespace, parse,
+    chars, altChars, range, digit, whitespace, parse,
+    flatMapResult,
 } from './goal'
-
-const tag = (type, f) => (p) =>
-    f({ ...p, result: [] }).then((nextP) => ok({
-        ...nextP,
-        result: p.result.concat([{
-            type,
-            value: nextP.result.join(''),
-            from: p.index,
-            to: nextP.index,
-        }]),
-    }))
 
 const comment = seqs(
     drop(chars(';')),
@@ -64,8 +54,8 @@ const token = alts(
     tag('Dot', chars('.')),
     tag('Whitespace', plus(whitespace)),
     tag('Comment', comment),
-    tag('HexNumber', hexNumber),
-    tag('DecNumber', decNumber),
+    toNumber(tag('HexNumber', hexNumber)),
+    toNumber(tag('DecNumber', decNumber)),
     tag('TaggedString', tagString),
     tag('QuotedString', quotedString),
     tag('Ident', ident),
@@ -74,3 +64,20 @@ const token = alts(
 const tokenSeq = all(token)
 
 export const tokenize = (str) => parse(tokenSeq, Array.from(str)).value
+
+function tag (type, f) {
+    return (p) =>
+        f({ ...p, result: [] }).then((nextP) => ok({
+            ...nextP,
+            result: p.result.concat([{
+                type,
+                value: nextP.result.join(''),
+                from: p.index,
+                to: nextP.index,
+            }]),
+        }))
+}
+
+function toNumber (f) {
+    return flatMapResult(f, ([tag]) => [{ ...tag, value: Number(tag.value) }])
+}
