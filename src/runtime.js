@@ -60,6 +60,17 @@ const JS = {
         obj[key] = value
         return obj
     },
+    deepEqual: ({ 0: l, 1: r }) => {
+        if (l === r) { return true }
+        if (!l || !r) { return false }
+        const keys = Object.keys(l)
+        if (keys.length !== Object.keys(r).length) { return false }
+        for (let i = 0; i <= keys.length; i++) {
+            const key = keys[i]
+            if (!JS.deepEqual(l[key], r[key])) { return false }
+        }
+        return true
+    },
 }
 
 const def = ({ 0: value }) => value
@@ -68,3 +79,5 @@ const letrec = ({ 0: value, 1: next }) => {
     const recur = (args) => value({ 0: recur })(args)
     return next({ 0: recur })
 }
+
+const applied = ({ 0: fn }) => (args) => fn(args)

@@ -1,0 +1,21 @@
+@module [#std/proto
+         options: #bare-prelude]
+
+@import [::guard ::do] := #std/result
+@import [::get-key] := #std/record
+
+@def apply := (f args){  f.applied()(args) }
+
+
+@def lookup-proto := (record id){
+    @guard record::proto.get-key(id)
+    lookup-proto(record::proto id)
+}
+
+@def method := (id){
+    (args){
+        @let self := args::0
+        @do proto := self.lookup-proto(id)
+        proto(args)
+    }.applied
+}

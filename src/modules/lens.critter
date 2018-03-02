@@ -1,0 +1,37 @@
+@module [#std/lens
+         options: [#bare-prelude]]
+
+@import [::ok ::error ::then ::cond ::seq] := #std/result
+@import [::get-key ::assoc ::record? ::fold] := #std/record
+
+; [f g h] -> f.seq(g).seq(h)
+@def flat-seq := (x){
+    x.record?.cond({
+        x.fold(ok (l r){ l.seq(r.flat-seq) })
+    } {
+        x
+    })
+}
+
+@def ->target := (focus){ [focus: focus set: ok] }
+
+@def lens := (getter setter){ (parent){
+    @then focus := getter(parent::focus)
+    @let set := (value){ setter(parent::focus value).then(parent::set) }
+    ok([::focus ::set])
+} }
+
+@def run-lens := (focus l){ flat-seq(l)(focus.->target) }
+
+@def get := (focus l){
+    run-lens(focus l).then((target){ ok(target::focus) })
+}
+@def set := (focus l value){
+    run-lens(focus l).then((target){ target::set(value) })
+}
+@def update := (focus l f){
+    run-lens(focus l).then((target){ target::set(f(target::focus)) })
+}
+@def key := (k){
+    lens((x){ x.get-key(k) } (x value){ x.assoc(k value) })
+}

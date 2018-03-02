@@ -1,0 +1,91 @@
+@module [#std/result
+         options: [#bare-prelude]]
+
+@def Result = [
+    new: (_ value){ ok(value) }
+]
+
+@def Ok = [
+    proto: Result
+    map: ([#ok value] f){ ok(f(value)) }
+    flatten: ([#ok value]){ value }
+]
+
+@def Error = [
+    proto: Result
+    map: (self){ self }
+    flatten: (self){ self }
+]
+
+@def ok = (value){ [#ok value proto: Ok] }
+@def error = (error){ [#error error proto: Error] }
+
+; if value is ok or err, return value, else return ok(value)
+@def flat-ok (value){
+    value.JS::get(#proto)
+         .JS::||([])
+         .JS::get(#proto)
+         .JS::===(Result)
+         .JS::?(
+             value
+             ok(value))
+}
+
+; conditionals
+@def cond := ([tag value] if-ok if-error){
+    @let f := JS::?(JS::===(tag #ok) if-ok if-error)
+    f(value)
+}
+@def then := (x if-ok){ x.cond(if-ok error) }
+@def else := (x if-error){ x.cond(ok if-error) }
+
+; logic
+@def ||:= (l r){ l.else({ r }) }
+@def && := (l r){ l.then({ r }) }
+@def ! := (x){ x.cond(error ok) } ; swaps ok & error tags
+
+; general comparison
+@def reference-equal? := (l r){
+    l.JS::===(r)
+     .JS::?({ ok(r) } { error(#not-equal) })()
+}
+; TODO: define structural equality in JS
+@def == := (l r){
+    l.JS::deep-equal(r)
+     .JS::?({ ok(r) } { error(#not-equal) })()
+}
+@def != := (l r){
+    not(==(l r)).cond({ ok(r) }{ error(#equal) })
+}
+
+; control flow
+; crash if x is error
+@def do := (x next){ x.cond(next (error){ JS::throw(error) }) }
+; returns x early if x is error
+@def try := (x next){ x.then(next).flat-ok }
+; returns x early if x is ok
+@def guard := (x next){ x.else(next).flat-ok }
+; postcondition
+@def returns := (test next){ next().flat-ok.then(test) }
+
+; combinators
+@def never := error([])
+@def always := ok([])
+
+@def alt := (l r){
+    (value){ l(value).else({ r(value) }) }
+}
+@def both := (l r){
+    (value){ l(value).then({ r(value) }) }
+}
+@def seq := (l r){
+    (value){ l(value).then(r) }
+}
+; repeat f on previous result until it fails
+@def repeat := (f){
+    (value){ f(value).cond(repeat(f) { ok(value) }) }
+}
+; repeat must succeed once
+@def repeat1 := (f){ f.seq(f.repeat) }
+; optionally succeed
+@def maybe := (f){ f.alt(ok) }
