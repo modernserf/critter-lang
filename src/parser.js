@@ -34,29 +34,30 @@ const string = P.alt(token('TaggedString'), token('QuotedString'))
 const ident = token('Ident')
 const terminal = P.alt(number, string, ident)
 
+// space: tokens without semantic content
 const space = P.alt(token('Whitespace'), token('Comment'))
 const _ = P.all(space)
 const __ = P.plus(space)
 
+// utilities for building argument lists
 const doublePad = (p) => P.wrapped(P.sepBy(p, __), _)
-
+const punArg = P.seq(token('FieldOp'), ident)
+    .map(([_, key]) => tags.PunArg(key.value))
 const createArgsFor = (expr) => {
     const namedArg = P.seq(ident, token('Colon'), _, expr)
         .map(([i, _, __, value]) => tags.NamedArg(i.value, value))
     const indexArg = expr.map(tags.Arg)
-    const punArg = P.seq(token('FieldOp'), ident)
-        .map(([_, key]) => tags.PunArg(key.value))
-    return P.alt(namedArg, indexArg, punArg)
+    return doublePad(P.alt(namedArg, indexArg, punArg))
 }
-const arg = P.lazy(() => createArgsFor(expression))
+const args = P.lazy(() => createArgsFor(expression))
 
-const record = P.wrapped(doublePad(arg), token('LBrk'), token('RBrk'))
-    .map(tags.Record)
+// records
+const record = P.wrapped(args, token('LBrk'), token('RBrk')).map(tags.Record)
 
+// field access
 const field = P.seq(
-    _, token('FieldOp'), P.alt(number.map((x) => x.value), ident.map((x) => x.value))
-).map((x) => x[2])
-
+    _, token('FieldOp'), P.alt(number, ident)
+).map((x) => x[2].value)
 const fieldGet = P.seq(
     P.alt(record, terminal), P.plus(field)
 ).map(spread(tagSeq(tags.FieldGet)))
@@ -64,38 +65,30 @@ const fieldGet = P.seq(
 // binding (includes destructuring)
 // pattern-match on identifiers, primitives,
 // and records composed of bindings
-const bindArg = P.lazy(() => createArgsFor(binding))
-const bindRecord = P.wrapped(
-    doublePad(bindArg), token('LBrk'), token('RBrk'))
+const bindArgs = P.lazy(() => createArgsFor(binding))
+const bindRecord = P.wrapped(bindArgs, token('LBrk'), token('RBrk'))
 const binding = P.alt(
     bindRecord.map(tags.Record),
     terminal,
 )
 
-const fnParams = P.wrapped(
-    doublePad(bindArg),
-    token('LParen'),
-    token('RParen')
-)
-
+// function definitions
+const fnParams = P.wrapped(bindArgs, token('LParen'), token('RParen'))
 const fnBody = P.lazy(() =>
     P.wrapped(body, token('LCurly'), token('RCurly')))
-
 const fnExp = P.alt(
     P.seq(fnParams, fnBody).map(spread(tags.FnExp)),
     fnBody.map((body) => tags.FnExp([], body))
 )
 
-const fnArgs = P.wrapped(
-    doublePad(arg),
-    token('LParen'),
-    token('RParen'))
-
+// function calls
+const fnArgs = P.wrapped(args, token('LParen'), token('RParen'))
 const fnCall = P.seq(
     P.alt(fnExp, fieldGet, record, terminal),
     P.plus(fnArgs)
 ).map(spread(tagSeq(tags.FnCall)))
 
+// dot function calls
 const dotArgs = P.seq(
     _,
     token('Dot'),
@@ -103,7 +96,6 @@ const dotArgs = P.seq(
     P.all(fnArgs)
 ).map(([_, __, callee, [call, ...restCalls]]) =>
     [callee, call || [], restCalls])
-
 const dotFnCall = P.seq(
     P.alt(fnCall, fieldGet, record, terminal),
     P.plus(dotArgs)
@@ -116,20 +108,20 @@ const dotFnCall = P.seq(
     firstArg
 ))
 
+// keyword function calls
 const keywordStatement = P.lazy(() => P.seq(
     P.wrapped(expression, token('At'), __),
     expression
 ).map(([keyword, value]) => tags.Keyword(keyword, null, value)))
-
 const keywordBinding = P.lazy(() => P.seq(
     P.wrapped(expression, token('At'), __),
     binding,
     P.wrapped(token('Assignment'), __),
     expression,
 ).map(([kw, bind, _, value]) => tags.Keyword(kw, bind, value)))
-
 const keyword = P.alt(keywordBinding, keywordStatement)
 
+// expressions
 const expression = P.alt(
     keyword,
     dotFnCall,
