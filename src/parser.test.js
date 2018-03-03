@@ -1,7 +1,8 @@
 import { expr, tags } from './parser'
 const {
-    FieldGet, Record, FnExp, FnCall, DotFnCall, Arg, NamedArg, Keyword,
-    DecNumber: Num, HexNumber, QuotedString, TaggedString: Str, Ident,
+    FieldGet, Record, FnExp, FnCall, DotFnCall, Arg, NamedArg, PunArg,
+    Keyword, DecNumber: Num, HexNumber, QuotedString, TaggedString: Str,
+    Ident,
 } = tags
 
 it('parses a number', () => {
@@ -138,7 +139,7 @@ it('function definition, punned named arg', () => {
         expr(`(x ::foo){ [x foo] }`)).toMatchObject(
         FnExp([
             Arg(Ident('x')),
-            NamedArg('foo', Ident('foo')),
+            PunArg('foo'),
         ], [
             Record([
                 Arg(Ident('x')),
@@ -160,9 +161,6 @@ it('parses an iife', () => {
 })
 
 it('destructures function args', () => {
-    // const args = (xs) => Object.entries(xs)
-    //     .map(([k,v]) => typeof k === "number" ? Arg(v) : NamedArg(k, v))
-    //
     expect(
         expr(`([foo bar]){ [bar foo] }`)
     ).toMatchObject(
@@ -284,4 +282,10 @@ it('parses the flat-ok definition', () => {
 
 it('parses chained calls on dots', () => {
     expect(expr(`foo(1).bar(2).baz(3)(4 5)`)).toBeTruthy()
+})
+
+it('allows pun args everywhere', () => {
+    expect(expr(`foo(::x ::y)`)).toMatchObject(
+        FnCall(Ident('foo'), [PunArg('x'), PunArg('y')])
+    )
 })

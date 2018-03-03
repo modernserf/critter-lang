@@ -80,3 +80,29 @@ it('destructures and pattern matches', () => {
         }
     `)))
 })
+
+it('destructures pun args', () => {
+    expect(expand(parse(`
+        ([::foo ::bar]){ [bar foo] }
+    `))).toMatchParseResult(expand(parse(`
+        (_0){
+            @let foo := _0::foo
+            @let bar := _0::bar
+            [bar foo]
+        }
+    `)))
+})
+
+it('expands pun args', () => {
+    expect(expand(parse(`
+        [::foo ::bar]
+    `))).toMatchParseResult(parse(`
+        [foo: foo bar: bar]
+    `))
+
+    expect(expand(parse(`
+        (x ::foo ::bar){ [x foo bar] }
+    `))).toMatchParseResult(parse(`
+        (x foo: foo bar: bar){ [x foo bar] }
+    `))
+})

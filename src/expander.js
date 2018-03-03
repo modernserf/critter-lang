@@ -13,23 +13,20 @@ export const expand = match({
     FieldGet: ({ target, key }) =>
         tags.FieldGet(expand(target), key),
     Record: ({ args }) =>
-        tags.Record(checkDuplicateNamedArgs(args)),
+        tags.Record(expandArgs(args)),
     FnCall: ({ callee, args }) =>
-        tags.FnCall(expand(callee), checkDuplicateNamedArgs(args)),
+        tags.FnCall(expand(callee), expandArgs(args)),
     DotFnCall: ({ callee, headArg, tailArgs }) =>
-        tags.FnCall(expand(callee), checkDuplicateNamedArgs([
+        tags.FnCall(expand(callee), expandArgs([
             tags.Arg(headArg),
             ...tailArgs,
         ])),
     FnExp: ({ params, body }) => expandDestructuring(
-        checkDuplicateNamedArgs(params),
+        expandArgs(params),
         body),
-    Arg: () => {
-        throw new Error('Arg must be expanded in context of args')
-    },
-    NamedArg: () => {
-        throw new Error('NamedArg must be expanded in context of args')
-    },
+    Arg: ({ value }) => tags.Arg(expand(value)),
+    NamedArg: ({ key, value }) => tags.NamedArg(key, expand(value)),
+    PunArg: ({ value }) => tags.NamedArg(value, tags.Ident(value)),
     Keyword: () => {
         throw new Error('Keyword must be expanded in context of body')
     },
@@ -109,18 +106,16 @@ function expandDestructuring (params, body) {
     ])
 }
 
-function checkDuplicateNamedArgs (args) {
+function expandArgs (args) {
     const usedNames = {}
     const out = []
     for (const arg of args) {
-        if (arg.key) {
-            if (usedNames[arg.key]) {
-                // ngl this is way more convenient than monadic error handling
-                throw new Error(`Duplicate key: ${arg.key}`)
-            }
-            usedNames[arg.key] = true
+        const expanded = expand(arg)
+        if (usedNames[expanded.key]) {
+            throw new Error(`Duplicate key: ${arg.key}`)
         }
-        out.push({ ...arg, value: expand(arg.value) })
+        if (arg.key) { usedNames[arg.key] = true }
+        out.push(expanded)
     }
     return out
 }

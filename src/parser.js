@@ -21,34 +21,32 @@ export const tags = tagConstructors([
     ['FnExp', 'params', 'body'],
     ['Arg', 'value'],
     ['NamedArg', 'key', 'value'],
+    ['PunArg', 'value'],
     ['Keyword', 'keyword', 'assignment', 'value'],
 ])
 
+// match tokens
 const token = (type) => P.match((x) => x.type === type)
 
+// terminals: tokens used directly from lexer
 const number = P.alt(token('HexNumber'), token('DecNumber'))
-
 const string = P.alt(token('TaggedString'), token('QuotedString'))
-
 const ident = token('Ident')
-
-const terminal = P.alt(
-    number,
-    string,
-    ident
-)
+const terminal = P.alt(number, string, ident)
 
 const space = P.alt(token('Whitespace'), token('Comment'))
-
 const _ = P.all(space)
 const __ = P.plus(space)
+
 const doublePad = (p) => P.wrapped(P.sepBy(p, __), _)
 
 const createArgsFor = (expr) => {
     const namedArg = P.seq(ident, token('Colon'), _, expr)
         .map(([i, _, __, value]) => tags.NamedArg(i.value, value))
     const indexArg = expr.map(tags.Arg)
-    return P.alt(namedArg, indexArg)
+    const punArg = P.seq(token('FieldOp'), ident)
+        .map(([_, key]) => tags.PunArg(key.value))
+    return P.alt(namedArg, indexArg, punArg)
 }
 const arg = P.lazy(() => createArgsFor(expression))
 
@@ -66,15 +64,9 @@ const fieldGet = P.seq(
 // binding (includes destructuring)
 // pattern-match on identifiers, primitives,
 // and records composed of bindings
-// includes punning of `[foo: foo]` as `[::foo]`
-// TODO: expand "punning" in expander, not here
-const _bindArg = P.lazy(() => createArgsFor(binding))
-const punArg = P.seq(token('FieldOp'), ident.map((x) => x.value))
-    .map(([_, key]) => tags.NamedArg(key, tags.Ident(key)))
-const bindArg = P.alt(_bindArg, punArg)
-
-const bindRecord = P.wrapped(doublePad(bindArg), token('LBrk'), token('RBrk'))
-
+const bindArg = P.lazy(() => createArgsFor(binding))
+const bindRecord = P.wrapped(
+    doublePad(bindArg), token('LBrk'), token('RBrk'))
 const binding = P.alt(
     bindRecord.map(tags.Record),
     terminal,
