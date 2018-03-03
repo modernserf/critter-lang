@@ -22,7 +22,8 @@ export const tags = tagConstructors([
     ['Arg', 'value'],
     ['NamedArg', 'key', 'value'],
     ['PunArg', 'value'],
-    ['Keyword', 'keyword', 'assignment', 'value'],
+    ['KeywordStatement', 'keyword', 'value'],
+    ['KeywordAssignment', 'keyword', 'assignment', 'value'],
 ])
 
 // match tokens
@@ -109,21 +110,22 @@ const dotFnCall = P.seq(
 ))
 
 // keyword function calls
+const kwHead = P.lazy(() => P.wrapped(expression, token('At'), __))
 const keywordStatement = P.lazy(() => P.seq(
-    P.wrapped(expression, token('At'), __),
+    kwHead,
     expression
-).map(([keyword, value]) => tags.Keyword(keyword, null, value)))
-const keywordBinding = P.lazy(() => P.seq(
-    P.wrapped(expression, token('At'), __),
+).map(([keyword, value]) => tags.KeywordStatement(keyword, value)))
+const keywordAssignment = P.lazy(() => P.seq(
+    kwHead,
     binding,
     P.wrapped(token('Assignment'), __),
     expression,
-).map(([kw, bind, _, value]) => tags.Keyword(kw, bind, value)))
-const keyword = P.alt(keywordBinding, keywordStatement)
+).map(([kw, bind, _, value]) => tags.KeywordAssignment(kw, bind, value)))
 
 // expressions
 const expression = P.alt(
-    keyword,
+    keywordAssignment,
+    keywordStatement,
     dotFnCall,
     fnCall,
     fnExp,

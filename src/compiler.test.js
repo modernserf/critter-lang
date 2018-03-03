@@ -3,8 +3,8 @@ import { compile as c } from './compiler'
 import { expand } from './expander'
 import { pipe } from './util'
 const {
-    FieldGet, Record, FnExp, FnCall, Arg, NamedArg, Keyword,
-    DecNumber: Num, QuotedString: Str, Ident,
+    FieldGet, Record, FnExp, FnCall, Arg, NamedArg, KeywordStatement,
+    DecNumber: Num, QuotedString: Str, Ident, KeywordAssignment,
 } = tags
 
 const compile = pipe([expand, c])
@@ -94,7 +94,7 @@ it('compiles field access', () => {
 })
 
 it('throws on bare keywords', () => {
-    const prog = Keyword(Ident('foo'), null, Ident('bar'))
+    const prog = KeywordStatement(Ident('foo'), Ident('bar'))
     expect(() => {
         compile(prog)
     }).toThrow()
@@ -102,7 +102,7 @@ it('throws on bare keywords', () => {
 
 it('compiles single keywords', () => {
     const prog = FnExp([], [
-        Keyword(Ident('foo'), null, Ident('bar')),
+        KeywordStatement(Ident('foo'), Ident('bar')),
     ])
 
     expect(compile(prog)).toEqual(
@@ -111,8 +111,8 @@ it('compiles single keywords', () => {
 
 it('compiles a sequence of keywords', () => {
     const prog = FnExp([], [
-        Keyword(Ident('foo'), null, Ident('bar')),
-        Keyword(Ident('baz'), null, Ident('quux')),
+        KeywordStatement(Ident('foo'), Ident('bar')),
+        KeywordStatement(Ident('baz'), Ident('quux')),
         Ident('snerf'),
     ])
 
@@ -122,7 +122,7 @@ it('compiles a sequence of keywords', () => {
 
 it('compiles keyword assignments', () => {
     const prog = FnExp([], [
-        Keyword(Ident('foo'), Ident('x'), Ident('bar')),
+        KeywordAssignment(Ident('foo'), Ident('x'), Ident('bar')),
         FnCall(Ident('inc'), [
             Arg(Ident('x')),
         ]),

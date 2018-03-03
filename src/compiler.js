@@ -23,7 +23,7 @@ export const compile = match({
         `${compile(target)}[${
             typeof key === 'string' ? quote(key) : key
         }]`,
-    Keyword: () => {
+    KeywordStatement: () => {
         throw new Error('Keyword not supported, compiler expects expanded AST')
     },
     DotFnCall: () => {
@@ -34,10 +34,11 @@ export const compile = match({
 })
 
 const compileBody = match({
-    Keyword: ({ keyword, assignment, value }) => assignment
-        ? `const ${compile(assignment)} = ${
-            compile(keyword)}({ 0: ${compile(value)} })`
-        : `${compile(keyword)}({ 0: ${compile(value)} })`,
+    KeywordStatement: ({ keyword, value }) =>
+        `${compile(keyword)}({ 0: ${compile(value)} })`,
+    KeywordAssignment: ({ keyword, assignment, value }) =>
+        `const ${compile(assignment)} = ${
+            compile(keyword)}({ 0: ${compile(value)} })`,
 }, compile)
 
 const reservedJSWords = new Set([

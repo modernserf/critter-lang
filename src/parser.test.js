@@ -1,8 +1,8 @@
 import { expr, tags } from './parser'
 const {
     FieldGet, Record, FnExp, FnCall, DotFnCall, Arg, NamedArg, PunArg,
-    Keyword, DecNumber: Num, HexNumber, QuotedString, TaggedString: Str,
-    Ident,
+    Ident, DecNumber: Num, HexNumber, QuotedString, TaggedString: Str,
+    KeywordStatement, KeywordAssignment,
 } = tags
 
 it('parses a number', () => {
@@ -180,9 +180,9 @@ it('dot functions', () => {
         ))
 })
 
-it('keywords', () => {
+it('keyword statement', () => {
     expect(expr('@foo bar(baz)'))
-        .toMatchObject(Keyword(Ident('foo'), null,
+        .toMatchObject(KeywordStatement(Ident('foo'),
             FnCall(Ident('bar'), [Arg(Ident('baz'))]))
         )
 })
@@ -190,7 +190,7 @@ it('keywords', () => {
 it('keyword assignment', () => {
     expect(
         expr('@foo(quux) x := bar(baz)')).toMatchObject(
-        Keyword(
+        KeywordAssignment(
             FnCall(Ident('foo'), [Arg(Ident('quux'))]),
             Ident('x'),
             FnCall(Ident('bar'), [
@@ -202,7 +202,7 @@ it('keyword assignment', () => {
 it('precedence', () => {
     expect(
         expr('@foo::bar(baz).quux::snerf x := xyzzy()')).toMatchObject(
-        Keyword(
+        KeywordAssignment(
             DotFnCall(FieldGet(Ident('quux'), 'snerf'),
                 FnCall(FieldGet(Ident('foo'), 'bar'), [
                     Arg(Ident('baz')),
@@ -253,7 +253,7 @@ it('parses the flat-ok definition', () => {
                 })
             }`)
     ).toMatchObject(
-        Keyword(Ident('let'), Ident('flat-ok'), FnExp([
+        KeywordAssignment(Ident('let'), Ident('flat-ok'), FnExp([
             Arg(Ident('m')),
         ], [
             dot(

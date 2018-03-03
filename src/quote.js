@@ -34,13 +34,16 @@ export const quote = match({
         tagged(token, quote(token.callee), quoteArgs(token.args)),
     FnExp: (token) =>
         tagged(token, quoteArgs(token.params), record(token.body.map(quote))),
-    Keyword: (token) => tags.Record([
-        tags.Arg(tags.TaggedString(token.type)),
+    KeywordStatement: (token) => tags.Record([
+        tags.Arg(tags.TaggedString('Keyword')),
         tags.Arg(quote(token.keyword)),
         tags.Arg(quote(token.value)),
-        token.assignment
-            ? tags.NamedArg('binding', quote(token.assignment))
-            : null,
+    ]),
+    KeywordAssignment: (token) => tags.Record([
+        tags.Arg(tags.TaggedString('Keyword')),
+        tags.Arg(quote(token.keyword)),
+        tags.Arg(quote(token.value)),
+        tags.NamedArg('binding', quote(token.assignment)),
     ].filter((x) => x)),
 }, (token) => {
     throw new Error(`not implemented: ${token.type} `)

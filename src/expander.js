@@ -4,7 +4,7 @@ import { quote } from './quote'
 
 export const expand = match({
     Program: ({ body }) =>
-        tags.Program(expandTopLevel(body)),
+        tags.Program(body.map(expandTopLevel)),
     HexNumber: id,
     DecNumber: id,
     QuotedString: id,
@@ -27,26 +27,20 @@ export const expand = match({
     Arg: ({ value }) => tags.Arg(expand(value)),
     NamedArg: ({ key, value }) => tags.NamedArg(key, expand(value)),
     PunArg: ({ value }) => tags.NamedArg(value, tags.Ident(value)),
+
     Keyword: () => {
         throw new Error('Keyword must be expanded in context of body')
     },
 }, ({ type }) => { throw new Error(`Unknown AST node ${type}`) })
 
-// TODO: top-level destructuring?
-const expandTopLevel = (body) => {
-    if (!body.length) { return [] }
-    const [tag, ...rest] = body
-    if (tag.type === 'Keyword') {
-        const { keyword, assignment, value } = tag
-        return [
-            tags.Keyword(
-                expand(keyword),
-                assignment ? expand(assignment) : null,
-                expand(value)),
-        ].concat(expandTopLevel(rest))
-    }
-    return [expand(tag)].concat(expandTopLevel(rest))
-}
+const expandTopLevel = match({
+    KeywordStatement: ({ keyword, value }) =>
+        tags.KeywordStatement(expand(keyword), expand(value)),
+    // TODO: destructuring?
+    KeywordAssignment: ({ keyword, assignment, value }) =>
+        tags.KeywordAssignment(
+            expand(keyword), expand(assignment), expand(value)),
+}, expand)
 
 // TODO: how can I prevent name collisions here?
 // can I have unparseable but legal variable names?
@@ -55,7 +49,8 @@ const identNum = (i) => tags.Ident(`_${i}`)
 const matchLiteral = (x, binding) => ({
     binding,
     conditions: [
-        tags.Keyword(tags.Ident('try'), null,
+        tags.KeywordStatement(
+            tags.Ident('try'),
             tags.FnCall(tags.Ident('=='), [
                 tags.Arg(binding),
                 tags.Arg(x),
@@ -75,7 +70,7 @@ const destructure = match({
             const childBinding = tags.FieldGet(binding, arg.key || j)
             if (arg.value.type === 'Ident') {
                 coll.push(
-                    tags.Keyword(
+                    tags.KeywordAssignment(
                         tags.Ident('let'),
                         arg.value,
                         childBinding,
@@ -123,11 +118,11 @@ function expandArgs (args) {
 function singleExpression (body) {
     const copy = body.slice(0)
     // TODO: don't append [#ok], pass `id` as value
-    const init = (copy[copy.length - 1].type === 'Keyword')
+    const init = (copy[copy.length - 1].keyword)
         ? tags.Record([tags.Arg(tags.TaggedString('ok'))])
         : expand(copy.pop())
 
-    return copy.reduceRight((after, bef) => bef.type === 'Keyword'
+    return copy.reduceRight((after, bef) => bef.keyword
         ? expandKeyword(bef.keyword, bef.value, after, bef.assignment)
         : expandKeyword(tags.Ident('do'), bef, after),
     init)

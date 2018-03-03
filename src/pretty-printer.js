@@ -48,9 +48,10 @@ export const print = match({
     ].join('\n'),
     NamedArg: ({ key, value }) => `${key}: ${print(value)}`,
     Arg: ({ value }) => print(value),
-    Keyword: ({ keyword, assignment, value }) => assignment
-        ? `@${print(keyword)} ${print(assignment)} := ${print(value)}`
-        : `@${print(keyword)} ${print(value)}`,
+    KeywordAssignment: ({ keyword, assignment, value }) =>
+        `@${print(keyword)} ${print(assignment)} := ${print(value)}`,
+    KeywordStatement: ({ keyword, assignment, value }) =>
+        `@${print(keyword)} ${print(value)}`,
     DotFnCall: ({ callee, headArg, tailArgs }) => tailArgs.length
         ? `${print(headArg)}.${print(callee)}(${printArgs(tailArgs)})`
         : `${print(headArg)}.${print(callee)}`,

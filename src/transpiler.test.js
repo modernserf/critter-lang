@@ -1,7 +1,5 @@
-import fs from 'fs'
 import { transpile } from './transpiler'
 
-const parser = fs.readFileSync('./src/parse.critter', 'utf8')
 const run = (text) => eval(transpile(text)) // eslint-disable-line no-eval
 
 it('transpiles literals', () => {
@@ -109,8 +107,4 @@ it('has pattern matching', () => {
         ; should not occur
         { ok(#default-value) }
     ])`)).toEqual(run(`ok([3 3 3])`))
-})
-
-it.skip('evals the parser combinators', () => {
-    expect(run(parser)).toBeTruthy()
 })
