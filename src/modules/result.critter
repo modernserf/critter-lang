@@ -67,6 +67,14 @@
 @def guard := (x next){ x.else(next).flat-ok }
 ; postcondition
 @def returns := (test next){ next().flat-ok.then(test) }
+; resumable error handlers
+@def break := (x next){
+    x.cond((val){ next(val).flat-ok } (err){ error([#break err next]) })
+}
+@def resume-with := (handler next){
+    @guard [#break err resume] := next()
+    handler(err).then(resume)
+}
 
 ; combinators
 @def never := error([])

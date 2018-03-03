@@ -4,7 +4,7 @@ import { quote } from './quote'
 
 export const expand = match({
     Program: ({ body }) =>
-        tags.Program(body.map(expandTopLevel)),
+        tags.Program(body.map(expand)),
     HexNumber: id,
     DecNumber: id,
     QuotedString: id,
@@ -27,20 +27,14 @@ export const expand = match({
     Arg: ({ value }) => tags.Arg(expand(value)),
     NamedArg: ({ key, value }) => tags.NamedArg(key, expand(value)),
     PunArg: ({ value }) => tags.NamedArg(value, tags.Ident(value)),
-
-    Keyword: () => {
-        throw new Error('Keyword must be expanded in context of body')
-    },
-}, ({ type }) => { throw new Error(`Unknown AST node ${type}`) })
-
-const expandTopLevel = match({
+    // Top-level only:
     KeywordStatement: ({ keyword, value }) =>
         tags.KeywordStatement(expand(keyword), expand(value)),
     // TODO: destructuring?
     KeywordAssignment: ({ keyword, assignment, value }) =>
         tags.KeywordAssignment(
             expand(keyword), expand(assignment), expand(value)),
-}, expand)
+}, ({ type }) => { throw new Error(`Unknown AST node ${type}`) })
 
 // TODO: how can I prevent name collisions here?
 // can I have unparseable but legal variable names?

@@ -1,5 +1,4 @@
 import { transpile } from './transpiler'
-
 const run = (text) => eval(transpile(text)) // eslint-disable-line no-eval
 
 it('transpiles literals', () => {
