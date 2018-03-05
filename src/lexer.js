@@ -1,5 +1,5 @@
 import {
-    ok, seqs, alts, all, plus, maybe, notOne, drop, wrappedWith,
+    seqs, alts, all, plus, maybe, notOne, drop, wrappedWith,
     chars, altChars, range, digit, whitespace, parse,
     flatMapResult,
 } from './goal'
@@ -18,7 +18,7 @@ const hexNumber = seqs(
 
 const decDigits = seqs(
     digit,
-    all(alts(drop(chars('_')), digit))
+    all(alts(chars('_'), digit))
 )
 const decNumber = seqs(
     maybe(chars('-')),
@@ -44,6 +44,7 @@ const token = alts(
     tag('FieldOp', chars('::')),
     tag('Assignment', chars(':=')),
     tag('Colon', chars(':')),
+    tag('Comma', chars(',')),
     tag('LBrk', chars('[')),
     tag('RBrk', chars(']')),
     tag('LCurly', chars('{')),
@@ -52,10 +53,11 @@ const token = alts(
     tag('RParen', chars(')')),
     tag('At', chars('@')),
     tag('Dot', chars('.')),
-    tag('Whitespace', plus(whitespace)),
+    tag('Whitespace', plus(chars(' '))),
+    tag('Newline', chars('\n')),
     tag('Comment', comment),
-    toNumber(tag('HexNumber', hexNumber)),
-    toNumber(tag('DecNumber', decNumber)),
+    tag('HexNumber', hexNumber),
+    tag('DecNumber', decNumber),
     tag('TaggedString', tagString),
     tag('QuotedString', quotedString),
     tag('Ident', ident),
@@ -66,18 +68,5 @@ const tokenSeq = all(token)
 export const tokenize = (str) => parse(tokenSeq, Array.from(str)).value
 
 function tag (type, f) {
-    return (p) =>
-        f({ ...p, result: [] }).then((nextP) => ok({
-            ...nextP,
-            result: p.result.concat([{
-                type,
-                value: nextP.result.join(''),
-                from: p.index,
-                to: nextP.index,
-            }]),
-        }))
-}
-
-function toNumber (f) {
-    return flatMapResult(f, ([tag]) => [{ ...tag, value: Number(tag.value) }])
+    return flatMapResult(f, (xs) => [{ type, value: xs.join('') }])
 }

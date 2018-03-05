@@ -117,6 +117,13 @@ export const matchOne = (f) => seq(hasInput, matchOneUnsafe(f))
 export const notOne = (f) => seq(not(f), any)
 export const eq = (val) => matchOne((x) => ops.eq(val, x))
 
+// helper for mutual recursion
+export const lazy = (getF, f = null) => (p) => {
+    if (f) { return f(p) }
+    f = getF()
+    return f(p)
+}
+
 export const flatMapResult = (parser, flatMapper) => (p) =>
     parser({ ...p, result: [] }).then((nextP) => ok({
         ...nextP,
@@ -139,6 +146,8 @@ export const wrappedWith = (body, l, r = null) =>
 
 export const sepBy = (content, separator) =>
     seq(content, all(seq(drop(separator), content)))
+export const sepBy1 = (content, separator) =>
+    seq(content, plus(seq(drop(separator), content)))
 
 // string-specific parsers
 

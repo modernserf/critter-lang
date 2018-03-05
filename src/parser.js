@@ -31,12 +31,13 @@ const token = (type) => P.match((x) => x.type === type)
 
 // terminals: tokens used directly from lexer
 const number = P.alt(token('HexNumber'), token('DecNumber'))
+    .map((x) => ({ ...x, value: Number(x.value.replace(/_/g, '')) }))
 const string = P.alt(token('TaggedString'), token('QuotedString'))
 const ident = token('Ident')
 const terminal = P.alt(number, string, ident)
 
 // space: tokens without semantic content
-const space = P.alt(token('Whitespace'), token('Comment'))
+const space = P.alt(token('Whitespace'), token('Comment'), token('Newline'))
 const _ = P.all(space)
 const __ = P.plus(space)
 
