@@ -7,6 +7,8 @@ import {
 } from './goal'
 
 export const tags = tagConstructors([
+    ['Program', 'body'],
+
     // terminals
     ['DecNumber', 'value'],
     ['HexNumber', 'value'],
@@ -22,8 +24,6 @@ export const tags = tagConstructors([
     ['Record', 'args'],
     ['Arg', 'value'],
     ['NamedArg', 'key', 'body'],
-    // TODO: PunArg is actually ambiguous with spaced FieldGet
-    ['PunArg', 'value'],
 
     ['FieldGet', 'value', 'field'],
 
@@ -86,8 +86,6 @@ const recordWithMissingEnd = flatMapResult(
 )
 
 // field access
-// TODO: expander needs to verify that lhs and rhs are valid
-// (lhs is record/ident, rhs is ident/number)
 const nonOperatorExpression = alts(
     record,
     terminal,
