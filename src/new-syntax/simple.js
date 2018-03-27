@@ -1,4 +1,33 @@
-const Language = createLanguage({
+import { tagConstructors } from '../util'
+
+export const tags = tagConstructors([
+    ['KwAssignment', 'keyword', 'binding', 'value'],
+    ['KwStatement', 'keyword', 'value'],
+
+    ['OpExpr', 'operator', 'right', 'left'],
+    ['DotExpr', 'callee', 'left'],
+
+    ['FnCall', 'args', 'target'],
+    ['FieldGet', 'key', 'target'],
+
+    ['FnExp', 'params', 'body'],
+
+    ['Record', 'args'],
+
+    ['NamedArg', 'key', 'value'],
+    ['RestArgs', 'args'],
+    ['PunArg', 'value'],
+    ['Arg', 'value'],
+
+    ['Op', 'value'],
+    ['Ident', 'value'],
+    ['TaggedStr', 'value'],
+    ['QuotedStr', 'value'],
+    ['HexNum', 'value'],
+    ['DecNum', 'value'],
+])
+
+export const Language = createLanguage({
     Program: (p) =>
         seq(_, p.Block, _),
     Block: (p) => alt(
@@ -7,29 +36,38 @@ const Language = createLanguage({
         p.OpExpr
     ),
     Statement: (p) => alt(
-        seq(t`@`, p.DotExpr, __, p.Binding, __, t`:=`, p.OpExpr),
-        seq(t`@`, p.DotExpr, __, p.OpExpr),
+        seq(t`@`, p.DotExpr, __, p.Binding, __, t`:=`, __, p.OpExpr)
+            .tag(tags.KwAssignment),
+        seq(t`@`, p.DotExpr, __, p.OpExpr).tag(tags.KwStatement),
     ),
+    // enforce single operator in lint phase
     OpExpr: (p) =>
-        seq(p.DotExpr, seq(__, p.Op, __, p.OpExpr).star()),
-    DotCalls: (p) =>
-        seq(_, t`.`, p.Ident, p.Call.star()),
+        seq(p.DotExpr,
+            seq(__, p.Op, __, p.OpExpr).tag(tags.OpExpr).star()
+        ).fold((left, expr) => ({ ...expr, left })),
     DotExpr: (p) =>
-        seq(p.Expr, p.Call.star(), p.DotCalls.star()),
+        seq(p.CallExpr,
+            seq(_, t`.`, p.DotExpr).tag(tags.DotExpr).star()
+        ).fold((left, expr) => ({ ...expr, left })),
+    CallExpr: (p) =>
+        seq(p.Expr, p.Call.star())
+            .fold((target, expr) => ({ ...expr, target })),
     Call: (p) => alt(
-        seq(t`(`, _, p.Arg.sepBy(__), _, t`)`),
-        seq(_, t`::`, p.Key)
+        seq(t`(`, _, p.Arg.sepBy(__).collect(), _, t`)`).tag(tags.FnCall),
+        seq(_, t`::`, p.Key).tag(tags.FieldGet)
     ),
     Expr: (p) => alt(
-        seq(t`(`, _, p.Binding.sepBy(__), _, t`){`, _, p.Block, _, t`}`),
-        seq(t`{`, _, p.Block, _, t`}`),
-        seq(t`[`.drop(), _, p.Arg.sepBy(__), _, t`]`.drop()).tag('Record'),
+        seq(p.FnHead, p.FnBody).tag(tags.FnExp),
+        p.FnBody.tag((body) => tags.FnExp([], body)),
+        seq(t`[`, _, p.Arg.sepBy(__).collect(), _, t`]`).tag(tags.Record),
         seq(t`(`, p.Op, t`)`),
         seq(t`(`, _, p.OpExpr, _, t`)`),
         p.Str,
         p.Num,
         p.Ident
     ),
+    FnHead: (p) => seq(t`(`, _, p.BindArg.sepBy(__).collect(), _, t`)`),
+    FnBody: (p) => seq(t`{`, _, p.Block.collect(), _, t`}`),
     Binding: (p) => alt(
         seq(t`[`, _, p.BindArg.sepBy(__), _, t`]`),
         seq(t`(`, p.Op, t`)`),
@@ -40,15 +78,15 @@ const Language = createLanguage({
     ),
     // enforce unique keys in lint phase
     Arg: (p) => alt(
-        seq(p.Key, t`:`, __, p.OpExpr).tag('NamedArg'),
-        t`:|`.tag('RestArgs'),
-        p.OpExpr.tag('Arg')
+        seq(p.Key, t`:`, __, p.OpExpr).tag(tags.NamedArg),
+        seq(t`:|`, __, p.Arg.sepBy(__).collect()).tag(tags.RestArgs),
+        p.OpExpr.tag(tags.Arg)
     ),
     BindArg: (p) => alt(
-        seq(p.Key, t`:`, __, p.Binding),
-        seq(t`::`, p.Ident),
-        t`:|`,
-        p.Binding
+        seq(p.Key, t`:`, __, p.Binding).tag(tags.NamedArg),
+        seq(t`::`, p.Ident).tag(tags.PunArg),
+        seq(t`:|`, __, p.BindArg.sepBy(__).collect()).tag(tags.RestArgs),
+        p.Binding.tag(tags.Arg)
     ),
     Key: (p) => alt(
         p.Num,
@@ -57,24 +95,24 @@ const Language = createLanguage({
     SpecialChars: () =>
         a`:."#@[](){} `.notOne(),
     Op: (p) =>
-        seq(a`^~!$%&*-+=|\/?<>,`, p.SpecialChars.star()).join(),
+        seq(a`^~!$%&*-+=|\/?<>,`, p.SpecialChars.star()).join().tag(tags.Op),
     IdentStr: (p) =>
         seq(regex(/[A-Za-z]/), p.SpecialChars.star()).join(),
     Ident: (p) =>
-        p.IdentStr.tag('Ident'),
+        p.IdentStr.tag(tags.Ident),
     Str: (p) => alt(
-        seq(t`#`.drop(), p.IdentStr).tag('TaggedStr'),
-        seq(t`"`.drop(),
-            alt(t`\"`.flatMap(() => [`"`]), regex(/[^"]/)).star(),
-            t`"`.drop()
-        ).join().tag('QuotedStr')
+        seq(t`#`, p.IdentStr).tag(tags.TaggedStr),
+        seq(t`"`,
+            alt(c`\"`.flatMap(() => [`"`]), regex(/[^"]/)).star().join(),
+            t`"`
+        ).tag(tags.QuotedStr)
     ),
     Num: () => alt(
-        seq(t`0x`, regex(/[a-fA-F0-9_]/).plus()).join().tag('HexNum'),
-        seq(t`-`.maybe(),
+        seq(c`0x`, regex(/[a-fA-F0-9_]/).plus()).join().tag(tags.HexNum),
+        seq(c`-`.maybe(),
             regex(/[0-9_]/).plus(),
-            seq(t`.`, regex(/[0-9_]/).plus()).maybe()
-        ).join().tag('DecNum'),
+            seq(c`.`, regex(/[0-9_]/).plus()).maybe()
+        ).join().tag(tags.DecNum),
     ),
 })
 
@@ -140,14 +178,30 @@ class Parser {
             }))
         )
     }
-    tag (type) {
-        return this.flatMap((value) => [{ type, value }])
+    collect () {
+        return this.flatMap((xs) => [xs])
+    }
+    tag (fn) {
+        return this.flatMap((value) => {
+            const notLit = (x) => x.type !== 'Lit'
+            const semanticValues = value.filter(notLit)
+                .map((x) => Array.isArray(x) ? x.filter(notLit) : x)
+            const obj = fn(...semanticValues)
+            Object.defineProperty(obj,
+                'rawValue',
+                { value, enumerable: false }
+            )
+            return obj
+        })
+    }
+    lit () {
+        return this.flatMap((value) => [{ type: 'Lit', value }])
     }
     join (j = '') {
         return this.flatMap((value) => value.join(j))
     }
-    drop () {
-        return this.flatMap(() => [])
+    fold (f) {
+        return this.flatMap(([h, ...t]) => [t.reduce(f, h)])
     }
 }
 
@@ -186,12 +240,13 @@ export function tokenize (str) {
         .then(({ result }) => ok(result)).unwrap()
 }
 
-function t (strings) { return chars(strings.raw[0]) }
+function c (strings) { return chars(strings.raw[0]).join() }
+function t (strings) { return chars(strings.raw[0]).join().lit() }
 function a (strings) { return altChars(strings.raw[0]) }
 
 const Line = regex(/\n/).join()
-const Comment = seq(t`;`.drop(), Line.notOne().star()).join().tag('Comment')
+const Comment = seq(t`;`, Line.notOne().star()).join().tag('Comment')
 const Whitespace = regex(/\s/).join()
-const __ = alt(Comment, Whitespace, Line).plus()
-const _ = alt(Comment, Whitespace, Line).star()
-const ___ = seq(alt(Whitespace, Comment).star(), Line, _)
+const __ = alt(Comment, Whitespace, Line).plus().lit()
+const _ = alt(Comment, Whitespace, Line).star().lit()
+const ___ = seq(alt(Whitespace, Comment).star(), Line, _).lit()
