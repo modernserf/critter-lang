@@ -1,6 +1,6 @@
-import { tags as t, tokenize } from './simple'
+import { tags as t, parse as p, print } from './simple'
 
-const parse = (str) => tokenize(str).filter((x) => x.type !== 'Lit')[0]
+const parse = (str) => p(str).value[0]
 
 it('parses terminals', () => {
     expect(parse('-123.45'))
@@ -93,4 +93,17 @@ it('parses keyword statements', () => {
         .toMatchObject(t.KwAssignment(
             t.Ident('foo'), t.Ident('bar'), t.Ident('baz')
         ))
+})
+
+it('pretty-prints programs', () => {
+    const text = `(x y){ foo.bar("a str" baz: #tag) ** [123.45 0x0F] }`
+
+    expect(print(p(text))
+        .replace(/<span class='language-\w+'>/g, '')
+        .replace(/<\/span>/g, '')
+        .replace(/&amp;/g, '&')
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+        .replace(/&quot;/g, '"'))
+        .toEqual(text)
 })

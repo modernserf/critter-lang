@@ -1,6 +1,7 @@
 import { tagConstructors } from '../util'
 
 export const tags = tagConstructors([
+    ['Program', 'value'],
     ['KwAssignment', 'keyword', 'binding', 'value'],
     ['KwStatement', 'keyword', 'value'],
 
@@ -29,7 +30,7 @@ export const tags = tagConstructors([
 
 export const Language = createLanguage({
     Program: (p) =>
-        seq(_, p.Block, _),
+        seq(_, p.Block.collect(), _, end).tag(tags.Program),
     Block: (p) => alt(
         seq(p.Statement, ___, p.Block),
         p.Statement,
@@ -187,21 +188,22 @@ class Parser {
             const semanticValues = value.filter(notLit)
                 .map((x) => Array.isArray(x) ? x.filter(notLit) : x)
             const obj = fn(...semanticValues)
-            Object.defineProperty(obj,
-                'rawValue',
-                { value, enumerable: false }
-            )
+            obj.rawValue = value
             return obj
         })
     }
     lit () {
-        return this.flatMap((value) => [{ type: 'Lit', value }])
+        return this.flatMap((value) => [{ type: 'Lit', rawValue: value }])
     }
     join (j = '') {
         return this.flatMap((value) => value.join(j))
     }
     fold (f) {
-        return this.flatMap(([h, ...t]) => [t.reduce(f, h)])
+        return this.flatMap(([h, ...t]) =>
+            [t.reduce((l, r) => ({
+                ...f(l, r),
+                rawValue: l.rawValue.concat(r.rawValue),
+            }), h)])
     }
 }
 
@@ -215,6 +217,10 @@ const test = (f) => new Parser(({ input, index, result }) =>
         : f(input[index])
             ? add({ input, index, result }, input[index])
             : error('no_match'))
+const end = new Parser(({ input, index, result }) =>
+    index >= input.length
+        ? ok({ input, index, result })
+        : error('expected_end_of_input'))
 
 const regex = (re) => test((value) => re.test(value))
 const char = (ch) => test((value) => value === ch)
@@ -234,10 +240,10 @@ function createLanguage (defs) {
         }, {})
 }
 
-export function tokenize (str) {
+export function parse (str) {
     const state = { input: Array.from(str), index: 0, result: [] }
     return Language().Program.parse(state)
-        .then(({ result }) => ok(result)).unwrap()
+        .then(({ result }) => ok(result[0])).unwrap()
 }
 
 function c (strings) { return chars(strings.raw[0]).join() }
@@ -250,3 +256,16 @@ const Whitespace = regex(/\s/).join()
 const __ = alt(Comment, Whitespace, Line).plus().lit()
 const _ = alt(Comment, Whitespace, Line).star().lit()
 const ___ = seq(alt(Whitespace, Comment).star(), Line, _).lit()
+
+export function print (tag) {
+    if (typeof tag === 'string') { return escape(tag) }
+    if (Array.isArray(tag)) { return tag.map(print).join('') }
+    const { type, rawValue } = tag
+    if (type === 'Lit') { return print(rawValue) }
+    return `<span class='language-${type}'>${print(rawValue)}</span>`
+}
+
+const esc = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }
+function escape (str) {
+    return Array.from(str).map((ch) => esc[ch] || ch).join('')
+}
